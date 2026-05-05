@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-cream text-ink font-body;
+    font-feature-settings: 'kern';
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 { @apply font-display font-black; }
+  /* Honor RTL on form controls */
+  input, textarea, select { @apply text-start; }
+}
+
+@layer components {
+  /* Sticker — slightly rotated colored badge with thick black border */
+  .sticker {
+    @apply inline-block border-2 border-ink bg-yellow px-3 py-1 font-display font-bold uppercase shadow-sticker;
+  }
+
+  /* Card — paper surface with thick border */
+  .card {
+    @apply rounded-2xl border-2 border-ink bg-cream shadow-sticker p-4;
+  }
+
+  /* Pill button — rounded-full with thick border, hover inverts */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-full border-2 border-ink bg-ink px-5 py-2 font-display font-bold uppercase text-cream cursor-pointer select-none;
+  }
+  .btn:hover { @apply bg-cream text-ink; }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-full border-2 border-ink bg-cream px-5 py-2 font-display font-bold uppercase text-ink cursor-pointer select-none;
+  }
+  .btn-secondary:hover { @apply bg-ink text-cream; }
+
+  /* Field — input/textarea/select with thick border */
+  .field {
+    @apply w-full rounded-xl border-2 border-ink bg-cream px-3 py-2 font-body outline-none;
+  }
+  .field:focus { @apply shadow-sticker; }
+
+  /* Status glows */
+  .glow-red    { @apply shadow-glow-red border-red; }
+  .glow-yellow { @apply shadow-glow-yellow border-yellow; }
+  .glow-green  { @apply shadow-glow-green border-green; }
+}
