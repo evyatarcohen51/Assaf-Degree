@@ -6,7 +6,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="min-h-full bg-cream text-ink">
+    <div className="min-h-full text-ink">
       <HamburgerHeader open={open} onToggle={() => setOpen((v) => !v)} />
 
       {/* Mobile overlay sidebar */}

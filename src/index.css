@@ -5,7 +5,10 @@
 @layer base {
   html, body, #root { height: 100%; }
   body {
-    @apply bg-cream text-ink font-body;
+    @apply text-ink font-body;
+    background-color: theme('colors.cream');
+    background-image: radial-gradient(circle, theme('colors.dot') 5px, transparent 5px);
+    background-size: 40px 40px;
     font-feature-settings: 'kern';
     -webkit-font-smoothing: antialiased;
   }
@@ -20,9 +23,9 @@
     @apply inline-block border-2 border-ink bg-yellow px-3 py-1 font-display font-bold uppercase shadow-sticker;
   }
 
-  /* Card — paper surface with thick border */
+  /* Card — light gray surface with thick border */
   .card {
-    @apply rounded-2xl border-2 border-ink bg-cream shadow-sticker p-4;
+    @apply rounded-2xl border-2 border-ink bg-smoke shadow-sticker p-4;
   }
 
   /* Pill button — rounded-full with thick border, hover inverts */

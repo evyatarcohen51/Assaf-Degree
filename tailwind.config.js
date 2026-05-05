@@ -6,8 +6,10 @@ export default {
       colors: {
         // Got Schooled palette — inspired by allthingswtf.com
         ink: '#2A2A2A',           // primary text + borders
-        cream: '#FFF6EA',         // primary background
-        paper: '#F0EADF',         // secondary surface
+        cream: '#FFF6EA',         // page background (under dot pattern)
+        dot: '#F0EADF',           // dot color in page background
+        paper: '#F0EADF',         // secondary surface (legacy alias for dot)
+        smoke: '#E8E5E0',         // card / box surface — light gray
         red: '#C53B3A',
         green: '#0C9367',
         orange: '#F07633',
