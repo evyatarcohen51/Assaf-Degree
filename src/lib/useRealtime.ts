@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useId } from 'react';
 import { supabase } from './supabase';
 import { useAuth } from './auth';
 
@@ -7,6 +7,9 @@ type Fetcher<T> = () => Promise<T>;
 /**
  * Generic hook: fetches data from Supabase and re-fetches when the table changes.
  * Provides Dexie's useLiveQuery-like behavior using Postgres Changes (Realtime).
+ *
+ * Each call gets a unique channel name (via useId) so multiple components
+ * subscribing to the same table don't share — and conflict on — a channel.
  */
 export function useTable<T>(
   table: string,
@@ -17,12 +20,15 @@ export function useTable<T>(
   const [data, setData] = useState<T | undefined>(undefined);
   const fetchRef = useRef(fetcher);
   fetchRef.current = fetcher;
+  const instanceId = useId();
 
   const reload = useCallback(() => {
-    fetchRef.current().then(setData).catch((err) => {
-      console.error(`useTable(${table}) failed:`, err);
-      setData(undefined);
-    });
+    fetchRef.current()
+      .then(setData)
+      .catch((err) => {
+        console.error(`useTable(${table}) failed:`, err);
+        setData(undefined);
+      });
   }, [table]);
 
   useEffect(() => {
@@ -31,8 +37,9 @@ export function useTable<T>(
       return;
     }
     reload();
+    const channelName = `${table}-${user.id}-${instanceId}`;
     const channel = supabase
-      .channel(`${table}-${user.id}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table, filter: `user_id=eq.${user.id}` },
@@ -43,7 +50,7 @@ export function useTable<T>(
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, table, reload, ...deps]);
+  }, [user?.id, table, reload, instanceId, ...deps]);
 
   return data;
 }

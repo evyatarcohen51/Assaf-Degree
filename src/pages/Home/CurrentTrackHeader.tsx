@@ -1,10 +1,11 @@
 import { useSettings } from '../../hooks/useSettings';
 import { useAllSemesters } from '../../hooks/useTreeData';
+import { getCurrentSemester } from '../../lib/progress';
 
 export function CurrentTrackHeader() {
   const settings = useSettings();
   const semesters = useAllSemesters();
-  const semester = semesters.find((s) => s.id === settings?.current_semester_id);
+  const semester = getCurrentSemester(semesters);
 
   const label = semester?.label || 'מסלול';
   const institution = settings?.institution_name || '';

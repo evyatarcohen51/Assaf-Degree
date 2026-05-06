@@ -2,7 +2,13 @@ import { useRef, useState } from 'react';
 import { addFile } from '../../hooks/useFiles';
 import { useAuth } from '../../lib/auth';
 
-export function FileDropzone({ subjectId }: { subjectId: string }) {
+export function FileDropzone({
+  subjectId,
+  topicId,
+}: {
+  subjectId: string;
+  topicId: string;
+}) {
   const { user } = useAuth();
   const [hover, setHover] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -13,7 +19,7 @@ export function FileDropzone({ subjectId }: { subjectId: string }) {
     setBusy(true);
     try {
       for (const f of Array.from(files)) {
-        await addFile(user.id, subjectId, f);
+        await addFile(user.id, subjectId, topicId, f);
       }
     } finally {
       setBusy(false);
@@ -38,7 +44,12 @@ export function FileDropzone({ subjectId }: { subjectId: string }) {
     >
       <p className="font-display font-bold uppercase">{busy ? 'מעלה...' : 'גרור קבצים לכאן'}</p>
       <p className="text-xs text-ink/60">או</p>
-      <button type="button" className="btn" onClick={() => inputRef.current?.click()} disabled={busy}>
+      <button
+        type="button"
+        className="btn"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+      >
         בחר קובץ
       </button>
       <input

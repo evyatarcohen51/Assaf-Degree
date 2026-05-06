@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useYears, useSemestersByYear, useSubjectsBySemester } from '../hooks/useTreeData';
 import { r } from '../lib/routes';
+import { getCurrentSemester } from '../lib/progress';
 import type { Year, Semester } from '../types/domain';
 
 export function SidebarTree() {
@@ -28,16 +29,33 @@ export function SidebarTree() {
 function YearNode({ year }: { year: Year }) {
   const [open, setOpen] = useState(true);
   const semesters = useSemestersByYear(year.id);
+  const navigate = useNavigate();
+
+  function handleNavigate() {
+    setOpen(true);
+    const target = getCurrentSemester(semesters) ?? semesters[0];
+    if (target) navigate(r.schedule(year.id, target.id));
+  }
+
   return (
     <li>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-lg border-2 border-ink bg-purple px-2 py-1 font-display font-bold uppercase text-cream"
-      >
-        <span>{year.label || 'ללא שם'}</span>
-        <span aria-hidden>{open ? '▾' : '▸'}</span>
-      </button>
+      <div className="flex items-stretch gap-1">
+        <button
+          type="button"
+          onClick={handleNavigate}
+          className="flex-1 rounded-lg border-2 border-ink bg-purple px-2 py-1 text-start font-display font-bold uppercase text-cream"
+        >
+          {year.label || 'ללא שם'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="rounded-lg border-2 border-ink bg-purple px-2 py-1 font-display font-bold text-cream"
+          aria-label={open ? 'סגור' : 'פתח'}
+        >
+          {open ? '▾' : '▸'}
+        </button>
+      </div>
       {open && (
         <ul className="ms-3 mt-1 flex flex-col gap-1 border-s-2 border-ink/30 ps-2">
           {semesters.map((s) => (
@@ -52,16 +70,32 @@ function YearNode({ year }: { year: Year }) {
 function SemesterNode({ year, semester }: { year: Year; semester: Semester }) {
   const [open, setOpen] = useState(true);
   const subjects = useSubjectsBySemester(semester.id);
+  const navigate = useNavigate();
+
+  function handleNavigate() {
+    setOpen(true);
+    navigate(r.schedule(year.id, semester.id));
+  }
+
   return (
     <li>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-lg border-2 border-ink bg-green px-2 py-1 font-display font-bold uppercase text-cream"
-      >
-        <span>{semester.label || 'סמסטר'}</span>
-        <span aria-hidden>{open ? '▾' : '▸'}</span>
-      </button>
+      <div className="flex items-stretch gap-1">
+        <button
+          type="button"
+          onClick={handleNavigate}
+          className="flex-1 rounded-lg border-2 border-ink bg-green px-2 py-1 text-start font-display font-bold uppercase text-cream"
+        >
+          {semester.label || 'סמסטר'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="rounded-lg border-2 border-ink bg-green px-2 py-1 font-display font-bold text-cream"
+          aria-label={open ? 'סגור' : 'פתח'}
+        >
+          {open ? '▾' : '▸'}
+        </button>
+      </div>
       {open && (
         <ul className="ms-3 mt-1 flex flex-col gap-1 border-s-2 border-ink/30 ps-2">
           <li>
@@ -91,7 +125,7 @@ function SemesterNode({ year, semester }: { year: Year; semester: Semester }) {
             </li>
           ))}
           {subjects.length === 0 && (
-            <li className="px-2 text-xs text-ink/50">אין מקצועות</li>
+            <li className="px-2 text-xs text-ink/50">אין קורסים</li>
           )}
         </ul>
       )}

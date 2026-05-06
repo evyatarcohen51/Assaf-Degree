@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useSettings } from '../../hooks/useSettings';
-import { useYears, useSemestersByYear } from '../../hooks/useTreeData';
-import { newId } from '../../lib/ids';
+import { useAllSemesters, useYears } from '../../hooks/useTreeData';
 import { r } from '../../lib/routes';
+import { YearsManager } from './YearsManager';
 import { SubjectsSection } from './SubjectsSection';
 import { WeeklyScheduleSection } from './WeeklyScheduleSection';
 
@@ -13,93 +13,55 @@ export function SettingsPage() {
   const { user } = useAuth();
   const settings = useSettings();
   const navigate = useNavigate();
-
   const years = useYears();
-  const currentYear = years[0];
-  const semesters = useSemestersByYear(currentYear?.id);
-  const currentSemester = semesters[0];
+  const semesters = useAllSemesters();
 
   const [institutionName, setInstitutionName] = useState('');
-  const [yearLabel, setYearLabel] = useState('');
-  const [semLabel, setSemLabel] = useState('');
-  const [semStart, setSemStart] = useState('');
-  const [semEnd, setSemEnd] = useState('');
   const [busy, setBusy] = useState(false);
+  const [activeSemesterId, setActiveSemesterId] = useState<string>('');
 
   useEffect(() => {
     if (settings) setInstitutionName(settings.institution_name);
   }, [settings?.institution_name]);
+
+  // Default active semester to current_semester_id from settings, or first available
   useEffect(() => {
-    if (currentYear) setYearLabel(currentYear.label);
-  }, [currentYear?.id, currentYear?.label]);
-  useEffect(() => {
-    if (currentSemester) {
-      setSemLabel(currentSemester.label);
-      setSemStart(currentSemester.start_date ?? '');
-      setSemEnd(currentSemester.end_date ?? '');
+    if (activeSemesterId) return;
+    if (settings?.current_semester_id) {
+      setActiveSemesterId(settings.current_semester_id);
+    } else if (semesters.length > 0) {
+      setActiveSemesterId(semesters[0].id);
     }
-  }, [
-    currentSemester?.id,
-    currentSemester?.label,
-    currentSemester?.start_date,
-    currentSemester?.end_date,
-  ]);
+  }, [settings?.current_semester_id, semesters, activeSemesterId]);
+
+  // If the active semester gets deleted, fall back
+  useEffect(() => {
+    if (activeSemesterId && !semesters.some((s) => s.id === activeSemesterId)) {
+      setActiveSemesterId(semesters[0]?.id ?? '');
+    }
+  }, [semesters, activeSemesterId]);
+
+  const activeSemester = semesters.find((s) => s.id === activeSemesterId);
 
   async function handleSave() {
     if (!user) return;
     setBusy(true);
     try {
-      let yearId = currentYear?.id;
-      if (!yearId) {
-        yearId = newId();
-        const { error } = await supabase
-          .from('years')
-          .insert({ id: yearId, user_id: user.id, label: yearLabel || 'תשפ"ו', order: 0 });
-        if (error) throw error;
-      } else {
-        await supabase
-          .from('years')
-          .update({ label: yearLabel })
-          .eq('user_id', user.id)
-          .eq('id', yearId);
-      }
-
-      let semId = currentSemester?.id;
-      if (!semId) {
-        semId = newId();
-        const { error } = await supabase.from('semesters').insert({
-          id: semId,
-          user_id: user.id,
-          year_id: yearId,
-          label: semLabel || "סמסטר א'",
-          start_date: semStart || null,
-          end_date: semEnd || null,
-        });
-        if (error) throw error;
-      } else {
-        await supabase
-          .from('semesters')
-          .update({
-            label: semLabel,
-            start_date: semStart || null,
-            end_date: semEnd || null,
-          })
-          .eq('user_id', user.id)
-          .eq('id', semId);
-      }
-
+      const hasMinimal = institutionName.trim() && years.length > 0 && semesters.length > 0;
       const { error } = await supabase
         .from('settings')
         .update({
           institution_name: institutionName,
-          current_year_id: yearId,
-          current_semester_id: semId,
-          bootstrapped: true,
+          current_semester_id: activeSemesterId || settings?.current_semester_id || null,
+          current_year_id: activeSemester?.year_id ?? settings?.current_year_id ?? null,
+          bootstrapped: hasMinimal,
         })
         .eq('user_id', user.id);
-      if (error) throw error;
-
-      navigate(r.home());
+      if (error) {
+        alert(`שמירה נכשלה: ${error.message}`);
+        return;
+      }
+      if (hasMinimal) navigate(r.home());
     } finally {
       setBusy(false);
     }
@@ -108,7 +70,6 @@ export function SettingsPage() {
   async function handleResetData() {
     if (!user) return;
     if (!confirm('למחוק את כל הנתונים? לא ניתן לשחזר.')) return;
-    // Delete cascades from years → semesters → subjects → everything else.
     await supabase.from('years').delete().eq('user_id', user.id);
     await supabase
       .from('settings')
@@ -123,6 +84,7 @@ export function SettingsPage() {
   }
 
   const isFirstRun = !settings?.bootstrapped;
+  const yearLabelOf = (yearId: string) => years.find((y) => y.id === yearId)?.label ?? '';
 
   return (
     <div className="flex flex-col gap-6">
@@ -130,7 +92,7 @@ export function SettingsPage() {
         <h1 className="text-3xl">הגדרות</h1>
         {isFirstRun && (
           <div className="mt-3 rounded-xl border-2 border-ink bg-yellow p-3 font-bold">
-            בוא נגדיר את האפליקציה — מלא את הפרטים כדי להתחיל
+            בוא נגדיר את האפליקציה — מלא את הפרטים כדי להתחיל. צריך לפחות שנה אחת + סמסטר אחד + שם מוסד.
           </div>
         )}
       </header>
@@ -148,58 +110,38 @@ export function SettingsPage() {
         </label>
       </section>
 
-      <section className="card">
-        <h2 className="text-xl mb-3">שנת לימודים נוכחית</h2>
-        <label className="block mb-3">
-          <span className="block text-sm mb-1">שנה (לדוגמה: תשפ״ו)</span>
-          <input
-            className="field"
-            value={yearLabel}
-            onChange={(e) => setYearLabel(e.target.value)}
-            placeholder="תשפ&quot;ו"
-          />
-        </label>
-        <label className="block mb-3">
-          <span className="block text-sm mb-1">סמסטר</span>
-          <input
-            className="field"
-            value={semLabel}
-            onChange={(e) => setSemLabel(e.target.value)}
-            placeholder="סמסטר א'"
-          />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="block text-sm mb-1">תאריך התחלה</span>
-            <input
-              type="date"
-              className="field"
-              value={semStart}
-              onChange={(e) => setSemStart(e.target.value)}
-            />
-          </label>
-          <label className="block">
-            <span className="block text-sm mb-1">תאריך סיום</span>
-            <input
-              type="date"
-              className="field"
-              value={semEnd}
-              onChange={(e) => setSemEnd(e.target.value)}
-            />
-          </label>
-        </div>
-      </section>
+      <YearsManager />
 
-      {currentSemester && (
+      {semesters.length > 0 && (
+        <section className="card">
+          <h2 className="text-xl mb-3">סמסטר לעריכה</h2>
+          <p className="text-sm text-ink/60 mb-2">
+            בחר את הסמסטר שאתה רוצה לערוך כעת. קורסים ושיעורים נשמרים מיידית.
+          </p>
+          <select
+            className="field"
+            value={activeSemesterId}
+            onChange={(e) => setActiveSemesterId(e.target.value)}
+          >
+            {semesters.map((s) => (
+              <option key={s.id} value={s.id}>
+                {yearLabelOf(s.year_id)} · {s.label}
+              </option>
+            ))}
+          </select>
+        </section>
+      )}
+
+      {activeSemester && (
         <>
-          <SubjectsSection semesterId={currentSemester.id} />
-          <WeeklyScheduleSection semesterId={currentSemester.id} />
+          <SubjectsSection semesterId={activeSemester.id} />
+          <WeeklyScheduleSection semesterId={activeSemester.id} />
         </>
       )}
 
       <div className="flex flex-wrap gap-3">
         <button type="button" className="btn" onClick={handleSave} disabled={busy}>
-          {busy ? '...' : 'שמור'}
+          {busy ? '...' : 'שמור והמשך'}
         </button>
         {!isFirstRun && (
           <button type="button" className="btn-secondary" onClick={handleResetData}>

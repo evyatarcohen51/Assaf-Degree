@@ -42,6 +42,7 @@ export interface Subject {
   semester_id: Id;
   name: string;
   color: string | null;
+  credit_points: number;
 }
 
 export type HomeworkStatus = 'pending' | 'in_progress' | 'done';
@@ -69,15 +70,29 @@ export interface ScheduleSlot {
   room: string | null;
 }
 
+export type TopicColor = 'yellow' | 'orange' | 'red' | 'purple' | 'blue' | 'green';
+
+export interface Topic {
+  id: Id;
+  user_id: string;
+  subject_id: Id;
+  name: string;
+  color: TopicColor;
+  order: number;
+  updated_at: string;
+}
+
 export interface FileRecord {
   id: Id;
   user_id: string;
   subject_id: Id;
+  topic_id: Id | null;
   name: string;
   mime_type: string;
   size: number;
   storage_path: string;
   added_at: string;
+  is_favorite: boolean;
 }
 
 export interface NoteRecord {
@@ -93,6 +108,20 @@ export interface RecentFile {
   opened_at: string;
 }
 
+export type GradeKind = 'exam' | 'assignment' | 'project' | 'other';
+
+export interface Grade {
+  id: Id;
+  user_id: string;
+  subject_id: Id;
+  name: string;
+  kind: GradeKind;
+  grade: number;
+  weight_percent: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export type DeadlineKind = 'exam' | 'assignment' | 'other';
 
 export interface Deadline {
@@ -102,4 +131,7 @@ export interface Deadline {
   title: string;
   date: string;
   kind: DeadlineKind;
+  reminder_email_at: string | null;
+  reminder_recurring_days: number | null;
+  reminder_sent_at: string | null;
 }

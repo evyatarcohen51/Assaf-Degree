@@ -47,7 +47,7 @@ export function HomeworkTable() {
             value={subjectId}
             onChange={(e) => setSubjectId(e.target.value)}
           >
-            <option value="">— מקצוע —</option>
+            <option value="">— קורס —</option>
             {subjects.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -74,7 +74,7 @@ export function HomeworkTable() {
         <table className="w-full border-collapse">
           <thead>
             <tr className="text-start">
-              <th className="border-b-2 border-ink p-2 text-start font-display uppercase">מקצוע</th>
+              <th className="border-b-2 border-ink p-2 text-start font-display uppercase">קורס</th>
               <th className="border-b-2 border-ink p-2 text-start font-display uppercase">משימה</th>
               <th className="border-b-2 border-ink p-2 text-start font-display uppercase">סטטוס</th>
               <th className="border-b-2 border-ink p-2"></th>

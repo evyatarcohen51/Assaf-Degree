@@ -37,7 +37,7 @@ export function RecentFilesList() {
             </div>
             {link && (
               <Link to={link} className="btn-secondary !px-3 !py-1 text-sm">
-                פתח מקצוע
+                פתח קורס
               </Link>
             )}
           </li>

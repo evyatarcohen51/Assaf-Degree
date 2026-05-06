@@ -1,11 +1,9 @@
-import { useSettings } from '../../hooks/useSettings';
 import { useAllSemesters } from '../../hooks/useTreeData';
-import { computeProgress, formatDateHe } from '../../lib/progress';
+import { computeProgress, formatDateHe, getCurrentSemester } from '../../lib/progress';
 
 export function SemesterProgressBar() {
-  const settings = useSettings();
   const semesters = useAllSemesters();
-  const semester = semesters.find((s) => s.id === settings?.current_semester_id);
+  const semester = getCurrentSemester(semesters);
 
   if (!semester) return null;
 

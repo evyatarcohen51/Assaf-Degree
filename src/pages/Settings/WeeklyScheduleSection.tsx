@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useTable } from '../../lib/useRealtime';
@@ -45,6 +45,16 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
       [semesterId],
     ) ?? [];
 
+  const [pendingAdds, setPendingAdds] = useState<ScheduleSlot[]>([]);
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+
+  const display = useMemo(() => {
+    const fromServerVisible = slots.filter((s) => !pendingDeletes.has(s.id));
+    const knownIds = new Set(slots.map((s) => s.id));
+    const stillPendingAdds = pendingAdds.filter((p) => !knownIds.has(p.id));
+    return [...fromServerVisible, ...stillPendingAdds];
+  }, [slots, pendingAdds, pendingDeletes]);
+
   const [subjectId, setSubjectId] = useState('');
   const [weekday, setWeekday] = useState<Weekday>(0);
   const [start, setStart] = useState('09:00');
@@ -53,7 +63,7 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
 
   async function handleAdd() {
     if (!user || !subjectId) return;
-    await supabase.from('schedule_slots').insert({
+    const optimistic: ScheduleSlot = {
       id: newId(),
       user_id: user.id,
       semester_id: semesterId,
@@ -62,13 +72,32 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
       start_minutes: timeToMinutes(start),
       end_minutes: timeToMinutes(end),
       room: room || null,
-    });
+    };
+    setPendingAdds((prev) => [...prev, optimistic]);
     setRoom('');
+    const { error } = await supabase.from('schedule_slots').insert(optimistic);
+    if (error) {
+      setPendingAdds((prev) => prev.filter((p) => p.id !== optimistic.id));
+      alert(`הוספה נכשלה: ${error.message}`);
+    }
   }
 
   async function handleRemove(id: string) {
     if (!user) return;
-    await supabase.from('schedule_slots').delete().eq('user_id', user.id).eq('id', id);
+    setPendingDeletes((prev) => new Set(prev).add(id));
+    const { error } = await supabase
+      .from('schedule_slots')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('id', id);
+    if (error) {
+      setPendingDeletes((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      alert(`מחיקה נכשלה: ${error.message}`);
+    }
   }
 
   const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name ?? '?';
@@ -78,7 +107,7 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
       <h2 className="text-xl mb-3">מערכת שעות שבועית</h2>
 
       {subjects.length === 0 ? (
-        <p className="text-sm text-ink/60">הוסף מקצועות תחילה</p>
+        <p className="text-sm text-ink/60">הוסף קורסים תחילה</p>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
@@ -87,7 +116,7 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
               value={subjectId}
               onChange={(e) => setSubjectId(e.target.value)}
             >
-              <option value="">— מקצוע —</option>
+              <option value="">— קורס —</option>
               {subjects.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -132,7 +161,7 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
       )}
 
       <ul className="flex flex-col gap-2">
-        {slots.map((s) => (
+        {display.map((s) => (
           <li
             key={s.id}
             className="flex items-center justify-between rounded-xl border-2 border-ink bg-paper px-3 py-2"
@@ -154,7 +183,7 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
             </button>
           </li>
         ))}
-        {slots.length === 0 && <li className="text-sm text-ink/50">אין שיעורים עדיין</li>}
+        {display.length === 0 && <li className="text-sm text-ink/50">אין שיעורים עדיין</li>}
       </ul>
     </section>
   );

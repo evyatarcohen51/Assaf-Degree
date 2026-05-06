@@ -18,8 +18,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <SidebarTree />
 
       <div className="mt-2 flex flex-col gap-1">
-        <NavItem to={r.profile()} label="פרופיל" colorClass="bg-orange" rotate="-rotate-sticker" />
-        <NavItem to={r.settings()} label="הגדרות" colorClass="bg-blue" rotate="rotate-sticker" />
+        <NavItem to={r.credits()} label="נקודות זכות" colorClass="bg-purple" rotate="-rotate-sticker" />
+        <NavItem to={r.profile()} label="פרופיל" colorClass="bg-orange" rotate="rotate-sticker" />
+        <NavItem to={r.settings()} label="הגדרות" colorClass="bg-blue" rotate="-rotate-sticker" />
       </div>
 
       {user && (

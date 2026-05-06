@@ -125,6 +125,64 @@ Settings → Environment Variables → הוסף שניים (Production + Preview
 
 ---
 
+## תזכורות במייל (Resend + Vercel Cron)
+
+האפליקציה תומכת בתזכורות אוטומטיות במייל למועדים קרובים. דורש שתי הגדרות חיצוניות.
+
+### א. חשבון Resend
+
+1. הרשמה: https://resend.com/signup (חינם, עד 100 מיילים ביום)
+2. אחרי אימות מייל → Dashboard → **API Keys** → **Create API Key** → תן שם וגישה Full
+3. שמור את ה-key (מתחיל ב-`re_`)
+4. **From address**:
+   - לבדיקה: `Got Schooled <onboarding@resend.dev>` (תקף מיד, ללא verify)
+   - לפרודקשן: לאמת דומיין משלך תחת **Domains** ולהגדיר From `Got Schooled <noreply@yourdomain.com>`
+
+### ב. Service Role Key של Supabase
+
+API ה-cron צריך לעקוף RLS כדי לקרוא deadlines של כל המשתמשים. זה דורש את **Service Role Key** של Supabase (לעולם לא ב-frontend!).
+
+Project Settings → API → **service_role secret** → העתק.
+
+### ג. Vercel Env Vars (Production)
+
+ב-Vercel Project → Settings → Environment Variables, הוסף:
+
+| Name | Value |
+|---|---|
+| `SUPABASE_URL` | אותו URL כמו `VITE_SUPABASE_URL` |
+| `SUPABASE_SERVICE_ROLE_KEY` | ה-service_role secret מ-Supabase |
+| `RESEND_API_KEY` | ה-key מ-Resend |
+| `REMINDER_FROM` | `Got Schooled <onboarding@resend.dev>` (או הדומיין שלך) |
+
+עשה **Redeploy** אחרי הוספת ה-env vars.
+
+### ד. Vercel Cron
+
+`vercel.json` כבר מגדיר cron יומי ב-6:00 UTC (9:00 שעון ישראל בקיץ, 8:00 בחורף):
+
+```json
+"crons": [{ "path": "/api/send-reminders", "schedule": "0 6 * * *" }]
+```
+
+Vercel free tier: עד 2 cron jobs, ריצה יומית. כדי לעבור לקצב גבוה יותר → upgrade.
+
+### ה. בדיקה ידנית
+
+אפשר להפעיל את ה-API ישירות:
+```bash
+curl https://YOUR-PROJECT.vercel.app/api/send-reminders
+```
+אמור להחזיר `{"ok": true, "sent": N, ...}`. בדוק בתיבת הדואר של המשתמש שמייל הגיע.
+
+### ו. התנהגות הלוגיקה
+
+- **תזכורת חד-פעמית**: לאחר שליחה — `reminder_sent_at` מתעדכן, ה-cron לא ישלח שוב.
+- **תזכורת חוזרת** (כל יום/שבוע/חודש): לאחר שליחה — `reminder_email_at` מתקדם בכמות הימים שהוגדרה. אם cron החמיץ ימים, מתקדם עד שזה בעתיד.
+- מיילים נשלחים רק כשתאריך התזכורת ≤ עכשיו, ונבחרים לפי `user_id` של ה-deadline ושולפים את המייל מ-`profile.email`.
+
+---
+
 ## פתרון בעיות
 
 | בעיה | פתרון |
@@ -135,6 +193,7 @@ Settings → Environment Variables → הוסף שניים (Production + Preview
 | קבצים לא עולים | בדוק שה-Storage bucket `user-files` קיים (Storage → Buckets) |
 | Forgot password לא עובד | בדוק Site URL ב-Authentication → URL Configuration |
 | `useFirstRunGuard` בלולאה | ודא ש-`bootstrapped` מתעדכן ל-`true` בעת שמירת ההגדרות הראשונה |
+| תזכורות במייל לא נשלחות | (1) `curl /api/send-reminders` ידנית כדי לראות שגיאות. (2) ודא ש-4 ה-env vars של reminders הוגדרו ב-Vercel. (3) Resend Dashboard → Logs לראות אם המיילים נשלחים. (4) בדוק שהמיילים לא הולכים לספאם. |
 
 ---
 
