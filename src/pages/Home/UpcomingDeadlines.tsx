@@ -61,6 +61,19 @@ export function UpcomingDeadlines() {
     await supabase.from('deadlines').delete().eq('user_id', user.id).eq('id', id);
   }
 
+  async function handleClearReminder(id: string) {
+    if (!user) return;
+    await supabase
+      .from('deadlines')
+      .update({
+        reminder_email_at: null,
+        reminder_recurring_days: null,
+        reminder_sent_at: null,
+      })
+      .eq('user_id', user.id)
+      .eq('id', id);
+  }
+
   return (
     <div className="flex flex-col gap-3">
       {subjects.length > 0 && (
@@ -159,8 +172,19 @@ export function UpcomingDeadlines() {
               <div className="text-xs text-ink/60">
                 <bdi>{subjectName(d.subject_id)}</bdi>
                 {d.reminder_email_at && (
-                  <span className="ms-2">
-                    📧 {d.reminder_recurring_days ? `כל ${d.reminder_recurring_days} ימים` : 'תזכורת'}
+                  <span className="ms-2 inline-flex items-center gap-1">
+                    <span>
+                      📧 {d.reminder_recurring_days ? `כל ${d.reminder_recurring_days} ימים` : 'תזכורת'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleClearReminder(d.id)}
+                      aria-label="הסר תזכורת"
+                      title="הסר תזכורת"
+                      className="inline-flex items-center justify-center h-4 w-4 rounded-full border border-ink/40 text-ink/60 hover:bg-red hover:text-cream hover:border-red text-[10px] leading-none"
+                    >
+                      ×
+                    </button>
                   </span>
                 )}
               </div>
