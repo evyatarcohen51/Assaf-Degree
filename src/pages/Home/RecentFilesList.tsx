@@ -19,9 +19,9 @@ export function RecentFilesList() {
   return (
     <ul className="flex flex-col gap-2">
       {recents.map(({ file }) => {
-        const sub = subjectById.get(file.subjectId);
-        const sem = sub ? semesterById.get(sub.semesterId) : undefined;
-        const link = sub && sem ? r.subject(sem.yearId, sem.id, sub.id) : undefined;
+        const sub = subjectById.get(file.subject_id);
+        const sem = sub ? semesterById.get(sub.semester_id) : undefined;
+        const link = sub && sem ? r.subject(sem.year_id, sem.id, sub.id) : undefined;
         return (
           <li
             key={file.id}

@@ -1,153 +1,161 @@
-# מדריך — איך מעבירים את "Got Schooled" לטאבלט/טלפון של אסף
+# מדריך — הקמת Got Schooled על Supabase + Vercel
 
-המדריך הזה מכסה שלוש דרכים להעביר את האפליקציה למכשיר אחר ולהריץ אותה משם.
-**כל הדרכים פועלות אופליין** — הנתונים והקבצים של אסף יישמרו על המכשיר שלו ב-IndexedDB ולא יוצאים לענן.
+## סקירה כללית
+
+האפליקציה עוברת מ-IndexedDB מקומי ל-Supabase (Postgres + Storage + Auth).
+הפריסה ב-Vercel אוטומטית לכל push ל-`main`.
 
 ---
 
-## שלב מקדים: בנייה (פעם אחת על המחשב)
+## שלב 1 — הקמת Supabase
+
+### א. הרצת ה-migration
+
+1. כנס ל-Supabase Dashboard של הפרויקט
+2. SQL Editor → New query
+3. העתק את כל התוכן של [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql)
+4. הרץ. תקבל "Success. No rows returned."
+
+ה-migration יוצר:
+- 11 טבלאות עם RLS (כל משתמש רואה רק את הנתונים שלו)
+- Storage bucket בשם `user-files` עם RLS לפי תיקייה (`<user_id>/<file_id>`)
+- Trigger אוטומטי שיוצר רשומות `settings` + `profile` לכל משתמש חדש
+
+### ב. הגדרת Auth
+
+Authentication → Providers → Email:
+- **Enable Email provider**: ✓
+- **Confirm email**: ביטול (לא נרצה אישור מייל לשני המשתמשים)
+- **Secure email change**: ✓ (ברירת מחדל)
+- **Secure password change**: ✓
+
+Authentication → URL Configuration:
+- **Site URL**: כתובת ה-Vercel (למשל `https://assaf-degree.vercel.app`)
+- **Redirect URLs**: הוסף `https://*.vercel.app/**` ו-`http://localhost:5173/**` (למקרה של dev)
+
+### ג. יצירת המשתמשים
+
+Authentication → Users → Add user → Create new user:
+
+**משתמש 1**:
+- Email: `evyatarcohen51@gmail.com`
+- Password: `IamGroot1!`
+- Auto Confirm User: ✓
+
+**משתמש 2**:
+- Email: `Asf20c@gmail.com`
+- Password: `IamGroot1!`
+- Auto Confirm User: ✓
+
+ה-trigger יוצר אוטומטית את שורות `settings` ו-`profile` עם `must_change_password = true` —
+האפליקציה תכריח אותם להחליף סיסמה בכניסה הראשונה.
+
+### ד. שליפת ה-credentials
+
+Project Settings → API → Project API Keys:
+- **Project URL**: `https://xxxxxxxxxxxx.supabase.co`
+- **anon public key**: `eyJ...` (זה ה-key הציבורי, מותר ב-frontend)
+
+---
+
+## שלב 2 — Env vars מקומיים (לפיתוח)
+
+צור `/home/evyatar/projects/Assaf-Degree/.env.local`:
+
+```
+VITE_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...
+```
+
+הקובץ ב-`.gitignore` ולא ייכנס ל-Git.
 
 ```bash
 cd ~/projects/Assaf-Degree
-npm install              # פעם אחת בלבד
-npm run build
+npm run dev
 ```
 
-נוצרת תיקיית `dist/` עם כל הקבצים הסטטיים. כל הדרכים למטה משתמשות בתיקייה הזו.
+פתח `http://localhost:5173` — אמור להיות דף Login.
 
 ---
 
-## דרך 1 (מומלצת): התקנה כ-PWA דרך GitHub Pages
+## שלב 3 — Vercel deployment
 
-**יתרונות**: אייקון על המסך הראשי של אסף, פתיחה בלחיצה אחת, עובד אופליין מהפעם השנייה והלאה, נראה כמו אפליקציה אמיתית.
+### א. חיבור הפרויקט
 
-### א. העלאה ל-GitHub Pages
+1. Vercel Dashboard → Add New → Project
+2. Import הריפו `Assaf-Degree` מ-GitHub
+3. Framework: Vite (אוטומטי)
+4. Build Command: `npm run build` (אוטומטי)
+5. Output Directory: `dist` (אוטומטי)
 
-```bash
-cd ~/projects/Assaf-Degree
-git init
-git add .
-git commit -m "Initial commit"
+### ב. Env vars ב-Vercel
 
-# צור ריפו ריק ב-GitHub (פרטי) בשם got-schooled, ואז:
-git remote add origin git@github.com:evyatarcohen51/got-schooled.git
-git push -u origin main
+Settings → Environment Variables → הוסף שניים (Production + Preview + Development):
 
-# העלה רק את dist/ לענף gh-pages:
-npx --yes gh-pages -d dist
-```
+| Name | Value |
+|---|---|
+| `VITE_SUPABASE_URL` | אותו URL מ-Supabase |
+| `VITE_SUPABASE_ANON_KEY` | אותו anon key |
 
-GitHub יפעיל את הקישור: `https://evyatarcohen51.github.io/got-schooled/`
+### ג. Deploy
 
-### ב. התקנה על הטאבלט של אסף
+לחץ Deploy. Vercel ירוץ build וייתן URL ציבורי.
 
-1. אסף פותח את הקישור ב-**Chrome** על הטאבלט (אנדרואיד) או ב-**Safari** (iPad).
-2. בתפריט הדפדפן: **"הוסף למסך הבית"** (Add to Home Screen).
-3. אייקון "Schooled" מופיע על המסך הראשי.
-4. לחיצה על האייקון → האפליקציה נפתחת במסך מלא, בלי סרגל דפדפן.
-5. **מהפעם השנייה והלאה — עובד אופליין לחלוטין**, גם בלי אינטרנט.
+החל מעכשיו, כל `git push origin main` יפעיל deploy אוטומטי.
 
----
+### ד. עדכון Site URL ב-Supabase
 
-## דרך 2: קובץ מקומי על המכשיר (file://)
+חזור ל-Supabase → Authentication → URL Configuration → Site URL:
+שים את הכתובת הציבורית של Vercel (מה ש-Vercel נתן לך, למשל `https://assaf-degree.vercel.app`).
 
-**יתרונות**: בלי GitHub, בלי שרת, בלי אינטרנט. רק עותק מקומי.
-**חסרון**: אסף נכנס דרך מנהל הקבצים — אין אייקון יפה, וייתכן שלא תעבוד התקנה כ-PWA (Service Workers דורשים HTTPS או localhost).
-
-### א. העברת הקבצים
-
-מהמחשב לטאבלט באחת מהדרכים:
-
-- **כבל USB**: מחבר את הטאבלט, מעתיק את כל תיקיית `dist/` אל `Internal storage/Documents/got-schooled/` (או כל תיקייה אחרת).
-- **Google Drive**: מעלה את `dist/` כתיקייה דחוסה (zip), אסף מוריד ומחלץ.
-- **שליחת קובץ דרך WhatsApp/Telegram**: דחיסה ל-zip ושליחה ישירות.
-
-### ב. פתיחה על הטאבלט
-
-1. אסף פותח את מנהל הקבצים (Files / Material Files / וכד').
-2. נווט אל `got-schooled/`
-3. לחיצה ארוכה על `index.html` → "פתיחה באמצעות..." → Chrome.
-4. האפליקציה עולה. הנתונים יישמרו על הטאבלט.
-
-> ⚠️ **חשוב**: hash routing (`#/...`) עובד עם `file://`. אבל service worker (PWA אופליין) עלול לא לעבוד דרך `file://` בכל הדפדפנים. אם אתה רוצה התנהגות PWA מלאה — לך עם דרך 1 או 3.
+זה חשוב כדי שקישור איפוס סיסמה יוביל למקום הנכון.
 
 ---
 
-## דרך 3: שרת מקומי על הטאבלט (Termux)
+## שלב 4 — אימות
 
-**יתרונות**: PWA מלא + URL נקי, הכל מקומי, בלי ענן.
-**חסרון**: דורש התקנה ראשונית של אפליקציה (Termux) על הטאבלט. רלוונטי רק אם אסף רוצה אפליקציה מקצועית באמת.
-
-### א. הכנה על הטאבלט (פעם אחת)
-
-1. אסף מתקין **Termux** מ-F-Droid ([https://f-droid.org/packages/com.termux/](https://f-droid.org/packages/com.termux/)). **לא** מ-Play Store — הגרסה שם ישנה.
-2. בתוך Termux:
-   ```bash
-   pkg update
-   pkg install python
-   termux-setup-storage
-   ```
-
-### ב. העברת הקבצים
-
-מעתיק את תיקיית `dist/` אל `/storage/emulated/0/Documents/got-schooled/` בטאבלט.
-
-### ג. הפעלה
-
-בכל פעם שאסף רוצה להשתמש באפליקציה, ב-Termux:
-
-```bash
-cd /storage/emulated/0/Documents/got-schooled
-python -m http.server 8080
-```
-
-ואז ב-Chrome: `http://localhost:8080/`
-
-הפעם הראשונה — "הוסף למסך הבית" → אייקון, אופליין מלא.
+1. פתח את הקישור של Vercel
+2. Login עם `evyatarcohen51@gmail.com` / `IamGroot1!`
+3. תופנה לדף "הגדרת סיסמה ראשונית" — הכנס סיסמה חדשה
+4. תופנה לדף ההגדרות — מלא מוסד / שנה / סמסטר / מקצועות / מערכת שעות
+5. שמור — נכנס לדף הבית
+6. **בדיקת sync**: פתח את אותו URL בטאבלט (כל מכשיר), Login עם אותו אקאונט — תראה את אותם נתונים
+7. **בדיקת realtime**: שינוי במחשב יופיע בטאבלט בתוך שנייה
+8. **בדיקת Forgot password**: בדף Login → "שכחתי סיסמה" → הזן מייל → תקבל מייל עם קישור איפוס
 
 ---
 
-## איך לעדכן את האפליקציה אחרי שינויים
-
-כל פעם שתשנה קוד:
-
-```bash
-cd ~/projects/Assaf-Degree
-npm run build
-```
-
-ואז:
-- **דרך 1 (GitHub Pages)**: `npx gh-pages -d dist` — הטאבלט יקבל את העדכון אוטומטית מהפעם הבאה ש-Chrome מתחבר לאינטרנט (Service Worker מתעדכן).
-- **דרך 2/3**: העברה ידנית של `dist/` לטאבלט וטעינה מחדש.
-
----
-
-## הנתונים של אסף — איפה הם נשמרים?
-
-הכל ב-IndexedDB של הדפדפן על הטאבלט שלו, בבסיס נתונים בשם `GotSchooledDB`:
-- הגדרות מוסד / שנה / סמסטר / מקצועות
-- מערכת שעות שבועית
-- שיעורי בית
-- קבצים שהוא מעלה (PDFים, תמונות וכו') — נשמרים כ-Blobs
-- הערות לכל מקצוע
-- מבחנים ומועדים קרובים
-- פרופיל (תמונה, שם, מייל, תאריך לידה)
-
-**גודל אפשרי**: על אנדרואיד Chrome — עד ~60% מהדיסק הפנוי. שווה לעשות פעם אחת:
-```js
-navigator.storage.persist();
-```
-ב-DevTools של Chrome, כדי שהמערכת לא תמחק את הנתונים תחת לחץ אחסון.
-
-**גיבוי**: אין כרגע — אפשר להוסיף בעתיד יצוא/יבוא JSON של כל ה-DB.
-
----
-
-## אם משהו לא עובד
+## פתרון בעיות
 
 | בעיה | פתרון |
 |---|---|
-| לחיצה על קישור פותחת 404 | ודא שאתה משתמש ב-`#/path` (hash routing) ולא `/path` ישיר |
-| השינויים לא מופיעים אחרי עדכון | ב-DevTools → Application → Service Workers → Unregister, ואז רענון |
-| הגדרות ריקות אחרי רענון | בדוק שהדפדפן לא בגלישה פרטית — IndexedDB לא נשמר במצב פרטי |
-| הקבצים לא נשמרים | אם הטאבלט בלחץ אחסון, הדפדפן עלול לפנות נתונים. הפעל `navigator.storage.persist()` |
+| "Missing Supabase env vars" בעת `npm run dev` | בדוק ש-`.env.local` קיים ושיש בו את שני המשתנים |
+| Login אומר "Invalid login credentials" | ודא שהמשתמש נוצר ב-Supabase ו-`Auto Confirm User` היה מסומן |
+| לא רואה נתונים אחרי login | ודא שה-migration רץ בלי שגיאות; פתח Table Editor → `settings` ובדוק שיש שורה עם ה-`user_id` שלך |
+| קבצים לא עולים | בדוק שה-Storage bucket `user-files` קיים (Storage → Buckets) |
+| Forgot password לא עובד | בדוק Site URL ב-Authentication → URL Configuration |
+| `useFirstRunGuard` בלולאה | ודא ש-`bootstrapped` מתעדכן ל-`true` בעת שמירת ההגדרות הראשונה |
+
+---
+
+## מבנה Supabase
+
+```
+auth.users               ← Supabase Auth (מנוהל)
+public.settings          ← הגדרות לכל משתמש (1:1)
+public.profile           ← פרופיל אישי (1:1)
+public.years             ← שנות לימודים
+public.semesters         ← סמסטרים
+public.subjects          ← מקצועות
+public.homework          ← שיעורי בית
+public.schedule_slots    ← שיעורים שבועיים
+public.files             ← מטא-דאטה של קבצים (הקובץ עצמו ב-Storage)
+public.notes             ← הערות חופשיות לכל מקצוע
+public.recent_files      ← קבצים שנפתחו לאחרונה
+public.deadlines         ← מועדים קרובים
+
+storage.buckets          ← bucket אחד: 'user-files'
+storage.objects          ← path: '<user_id>/<file_id>'
+```
+
+כל הטבלאות עם RLS — `auth.uid() = user_id`. אי אפשר לקרוא נתונים של משתמש אחר.

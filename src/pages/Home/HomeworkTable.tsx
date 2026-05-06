@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { useAllHomework, addHomework, setHomeworkStatus, deleteHomework } from '../../hooks/useHomework';
+import { useAuth } from '../../lib/auth';
+import {
+  useAllHomework,
+  addHomework,
+  setHomeworkStatus,
+  deleteHomework,
+} from '../../hooks/useHomework';
 import { useAllSubjects } from '../../hooks/useTreeData';
 import type { HomeworkStatus } from '../../types/domain';
 
@@ -16,6 +22,7 @@ const STATUS_GLOW: Record<HomeworkStatus, string> = {
 };
 
 export function HomeworkTable() {
+  const { user } = useAuth();
   const items = useAllHomework();
   const subjects = useAllSubjects();
   const [task, setTask] = useState('');
@@ -24,9 +31,10 @@ export function HomeworkTable() {
   const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name ?? '—';
 
   async function handleAdd() {
+    if (!user) return;
     const trimmed = task.trim();
     if (!trimmed || !subjectId) return;
-    await addHomework({ subjectId, task: trimmed });
+    await addHomework({ user_id: user.id, subjectId, task: trimmed });
     setTask('');
   }
 
@@ -76,7 +84,7 @@ export function HomeworkTable() {
             {items.map((it) => (
               <tr key={it.id} className="align-middle">
                 <td className="border-b border-ink/20 p-2">
-                  <bdi>{subjectName(it.subjectId)}</bdi>
+                  <bdi>{subjectName(it.subject_id)}</bdi>
                 </td>
                 <td className="border-b border-ink/20 p-2">
                   <bdi>{it.task}</bdi>
@@ -85,7 +93,9 @@ export function HomeworkTable() {
                   <select
                     className={`rounded-full border-2 bg-cream px-3 py-1 font-display font-bold uppercase ${STATUS_GLOW[it.status]}`}
                     value={it.status}
-                    onChange={(e) => setHomeworkStatus(it.id, e.target.value as HomeworkStatus)}
+                    onChange={(e) => {
+                      if (user) setHomeworkStatus(user.id, it.id, e.target.value as HomeworkStatus);
+                    }}
                   >
                     {(['pending', 'in_progress', 'done'] as const).map((s) => (
                       <option key={s} value={s}>
@@ -97,7 +107,9 @@ export function HomeworkTable() {
                 <td className="border-b border-ink/20 p-2 text-end">
                   <button
                     type="button"
-                    onClick={() => deleteHomework(it.id)}
+                    onClick={() => {
+                      if (user) deleteHomework(user.id, it.id);
+                    }}
                     className="btn-secondary !px-3 !py-1 text-sm"
                   >
                     מחק

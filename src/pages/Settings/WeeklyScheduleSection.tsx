@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
+import { useTable } from '../../lib/useRealtime';
 import { newId } from '../../lib/ids';
 import { useSubjectsBySemester } from '../../hooks/useTreeData';
-import type { Weekday } from '../../types/domain';
+import type { ScheduleSlot, Weekday } from '../../types/domain';
 
 const WEEKDAYS = [
   { value: 0, label: 'ראשון' },
@@ -26,11 +27,23 @@ function timeToMinutes(t: string): number {
 }
 
 export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
+  const { user } = useAuth();
   const subjects = useSubjectsBySemester(semesterId);
-  const slots = useLiveQuery(
-    () => db.scheduleSlots.where('semesterId').equals(semesterId).toArray(),
-    [semesterId],
-  ) ?? [];
+  const slots =
+    useTable<ScheduleSlot[]>(
+      'schedule_slots',
+      async () => {
+        if (!user) return [];
+        const { data, error } = await supabase
+          .from('schedule_slots')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('semester_id', semesterId);
+        if (error) throw error;
+        return data ?? [];
+      },
+      [semesterId],
+    ) ?? [];
 
   const [subjectId, setSubjectId] = useState('');
   const [weekday, setWeekday] = useState<Weekday>(0);
@@ -39,21 +52,23 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
   const [room, setRoom] = useState('');
 
   async function handleAdd() {
-    if (!subjectId) return;
-    await db.scheduleSlots.add({
+    if (!user || !subjectId) return;
+    await supabase.from('schedule_slots').insert({
       id: newId(),
-      semesterId,
-      subjectId,
+      user_id: user.id,
+      semester_id: semesterId,
+      subject_id: subjectId,
       weekday,
-      startMinutes: timeToMinutes(start),
-      endMinutes: timeToMinutes(end),
-      room: room || undefined,
+      start_minutes: timeToMinutes(start),
+      end_minutes: timeToMinutes(end),
+      room: room || null,
     });
     setRoom('');
   }
 
   async function handleRemove(id: string) {
-    await db.scheduleSlots.delete(id);
+    if (!user) return;
+    await supabase.from('schedule_slots').delete().eq('user_id', user.id).eq('id', id);
   }
 
   const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name ?? '?';
@@ -124,10 +139,10 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
           >
             <span>
               <strong>
-                <bdi>{subjectName(s.subjectId)}</bdi>
+                <bdi>{subjectName(s.subject_id)}</bdi>
               </strong>{' '}
-              — {WEEKDAYS[s.weekday]?.label} {minutesToTime(s.startMinutes)}–
-              {minutesToTime(s.endMinutes)}
+              — {WEEKDAYS[s.weekday]?.label} {minutesToTime(s.start_minutes)}–
+              {minutesToTime(s.end_minutes)}
               {s.room ? ` · ${s.room}` : ''}
             </span>
             <button

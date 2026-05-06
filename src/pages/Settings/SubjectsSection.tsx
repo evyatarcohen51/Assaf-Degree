@@ -1,24 +1,28 @@
 import { useState } from 'react';
 import { useSubjectsBySemester } from '../../hooks/useTreeData';
-import { db } from '../../db';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
 import { newId } from '../../lib/ids';
 
 export function SubjectsSection({ semesterId }: { semesterId: string }) {
+  const { user } = useAuth();
   const subjects = useSubjectsBySemester(semesterId);
   const [name, setName] = useState('');
 
   async function handleAdd() {
+    if (!user) return;
     const trimmed = name.trim();
     if (!trimmed) return;
-    await db.subjects.add({ id: newId(), semesterId, name: trimmed });
+    await supabase
+      .from('subjects')
+      .insert({ id: newId(), user_id: user.id, semester_id: semesterId, name: trimmed });
     setName('');
   }
 
   async function handleRemove(id: string) {
+    if (!user) return;
     if (!confirm('למחוק את המקצוע?')) return;
-    await db.subjects.delete(id);
-    await db.scheduleSlots.where('subjectId').equals(id).delete();
-    await db.notes.delete(id);
+    await supabase.from('subjects').delete().eq('user_id', user.id).eq('id', id);
   }
 
   return (

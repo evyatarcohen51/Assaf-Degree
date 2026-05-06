@@ -1,5 +1,7 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
+import { useTable } from '../../lib/useRealtime';
+import type { ScheduleSlot, Subject } from '../../types/domain';
 
 const WEEKDAYS = [
   { value: 0, label: 'ראשון' },
@@ -9,16 +11,34 @@ const WEEKDAYS = [
   { value: 4, label: 'חמישי' },
   { value: 5, label: 'שישי' },
 ];
-const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i); // 08:00 .. 21:00
+const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i);
 
 const DAY_COLORS = ['bg-yellow', 'bg-orange', 'bg-red', 'bg-purple', 'bg-blue', 'bg-green'];
 
 export function WeeklyGrid({ semesterId }: { semesterId: string }) {
-  const slots = useLiveQuery(
-    () => db.scheduleSlots.where('semesterId').equals(semesterId).toArray(),
-    [semesterId],
-  ) ?? [];
-  const subjects = useLiveQuery(() => db.subjects.toArray(), []) ?? [];
+  const { user } = useAuth();
+  const slots =
+    useTable<ScheduleSlot[]>(
+      'schedule_slots',
+      async () => {
+        if (!user) return [];
+        const { data, error } = await supabase
+          .from('schedule_slots')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('semester_id', semesterId);
+        if (error) throw error;
+        return data ?? [];
+      },
+      [semesterId],
+    ) ?? [];
+  const subjects =
+    useTable<Subject[]>('subjects', async () => {
+      if (!user) return [];
+      const { data, error } = await supabase.from('subjects').select('*').eq('user_id', user.id);
+      if (error) throw error;
+      return data ?? [];
+    }) ?? [];
   const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name ?? '?';
 
   return (
@@ -51,7 +71,7 @@ function Row({
   subjectName,
 }: {
   hour: number;
-  slots: { id: string; weekday: number; subjectId: string; startMinutes: number; endMinutes: number; room?: string }[];
+  slots: ScheduleSlot[];
   subjectName: (id: string) => string;
 }) {
   const min = hour * 60;
@@ -61,7 +81,7 @@ function Row({
       <div className="bg-paper p-2 text-xs font-bold border-t-2 border-ink/30 text-center">{hour}:00</div>
       {WEEKDAYS.map((d, i) => {
         const cell = slots.find(
-          (s) => s.weekday === d.value && s.startMinutes < max && s.endMinutes > min,
+          (s) => s.weekday === d.value && s.start_minutes < max && s.end_minutes > min,
         );
         return (
           <div
@@ -70,9 +90,9 @@ function Row({
               cell ? `${DAY_COLORS[i]}/40` : ''
             }`}
           >
-            {cell && cell.startMinutes >= min && (
+            {cell && cell.start_minutes >= min && (
               <div className="rounded-md border-2 border-ink bg-cream px-2 py-1 text-xs font-bold">
-                <bdi>{subjectName(cell.subjectId)}</bdi>
+                <bdi>{subjectName(cell.subject_id)}</bdi>
                 {cell.room && <div className="text-[10px] text-ink/70">{cell.room}</div>}
               </div>
             )}

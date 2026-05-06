@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
 import { useUpcomingDeadlines } from '../../hooks/useDeadlines';
 import { useAllSubjects } from '../../hooks/useTreeData';
-import { db } from '../../db';
 import { newId } from '../../lib/ids';
 import { formatDateHe } from '../../lib/progress';
 import type { DeadlineKind } from '../../types/domain';
@@ -13,6 +14,7 @@ const KIND_LABEL: Record<DeadlineKind, string> = {
 };
 
 export function UpcomingDeadlines() {
+  const { user } = useAuth();
   const deadlines = useUpcomingDeadlines();
   const subjects = useAllSubjects();
   const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name ?? '—';
@@ -23,10 +25,12 @@ export function UpcomingDeadlines() {
   const [kind, setKind] = useState<DeadlineKind>('exam');
 
   async function handleAdd() {
+    if (!user) return;
     if (!title.trim() || !date || !subjectId) return;
-    await db.deadlines.add({
+    await supabase.from('deadlines').insert({
       id: newId(),
-      subjectId,
+      user_id: user.id,
+      subject_id: subjectId,
       title: title.trim(),
       date,
       kind,
@@ -36,7 +40,8 @@ export function UpcomingDeadlines() {
   }
 
   async function handleRemove(id: string) {
-    await db.deadlines.delete(id);
+    if (!user) return;
+    await supabase.from('deadlines').delete().eq('user_id', user.id).eq('id', id);
   }
 
   return (
@@ -95,7 +100,7 @@ export function UpcomingDeadlines() {
                 <span className="text-xs text-ink/60">({KIND_LABEL[d.kind]})</span>
               </div>
               <div className="text-xs text-ink/60">
-                <bdi>{subjectName(d.subjectId)}</bdi>
+                <bdi>{subjectName(d.subject_id)}</bdi>
               </div>
             </div>
             <div className="flex items-center gap-2">

@@ -1,23 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
 import { useSettings } from '../../hooks/useSettings';
+import { useYears, useSemestersByYear } from '../../hooks/useTreeData';
 import { newId } from '../../lib/ids';
 import { r } from '../../lib/routes';
 import { SubjectsSection } from './SubjectsSection';
 import { WeeklyScheduleSection } from './WeeklyScheduleSection';
 
 export function SettingsPage() {
+  const { user } = useAuth();
   const settings = useSettings();
   const navigate = useNavigate();
 
-  const years = useLiveQuery(() => db.years.orderBy('order').toArray(), []) ?? [];
-  const currentYear = years[0]; // single-track app: one active year at a time
-  const semesters = useLiveQuery(
-    () => (currentYear ? db.semesters.where('yearId').equals(currentYear.id).toArray() : []),
-    [currentYear?.id],
-  ) ?? [];
+  const years = useYears();
+  const currentYear = years[0];
+  const semesters = useSemestersByYear(currentYear?.id);
   const currentSemester = semesters[0];
 
   const [institutionName, setInstitutionName] = useState('');
@@ -25,58 +24,101 @@ export function SettingsPage() {
   const [semLabel, setSemLabel] = useState('');
   const [semStart, setSemStart] = useState('');
   const [semEnd, setSemEnd] = useState('');
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (settings) setInstitutionName(settings.institutionName);
-  }, [settings?.institutionName]);
+    if (settings) setInstitutionName(settings.institution_name);
+  }, [settings?.institution_name]);
   useEffect(() => {
     if (currentYear) setYearLabel(currentYear.label);
   }, [currentYear?.id, currentYear?.label]);
   useEffect(() => {
     if (currentSemester) {
       setSemLabel(currentSemester.label);
-      setSemStart(currentSemester.startDate);
-      setSemEnd(currentSemester.endDate);
+      setSemStart(currentSemester.start_date ?? '');
+      setSemEnd(currentSemester.end_date ?? '');
     }
-  }, [currentSemester?.id, currentSemester?.label, currentSemester?.startDate, currentSemester?.endDate]);
+  }, [
+    currentSemester?.id,
+    currentSemester?.label,
+    currentSemester?.start_date,
+    currentSemester?.end_date,
+  ]);
 
   async function handleSave() {
-    let yearId = currentYear?.id;
-    if (!yearId) {
-      yearId = newId();
-      await db.years.add({ id: yearId, label: yearLabel || 'תשפ"ו', order: 0 });
-    } else {
-      await db.years.update(yearId, { label: yearLabel });
+    if (!user) return;
+    setBusy(true);
+    try {
+      let yearId = currentYear?.id;
+      if (!yearId) {
+        yearId = newId();
+        const { error } = await supabase
+          .from('years')
+          .insert({ id: yearId, user_id: user.id, label: yearLabel || 'תשפ"ו', order: 0 });
+        if (error) throw error;
+      } else {
+        await supabase
+          .from('years')
+          .update({ label: yearLabel })
+          .eq('user_id', user.id)
+          .eq('id', yearId);
+      }
+
+      let semId = currentSemester?.id;
+      if (!semId) {
+        semId = newId();
+        const { error } = await supabase.from('semesters').insert({
+          id: semId,
+          user_id: user.id,
+          year_id: yearId,
+          label: semLabel || "סמסטר א'",
+          start_date: semStart || null,
+          end_date: semEnd || null,
+        });
+        if (error) throw error;
+      } else {
+        await supabase
+          .from('semesters')
+          .update({
+            label: semLabel,
+            start_date: semStart || null,
+            end_date: semEnd || null,
+          })
+          .eq('user_id', user.id)
+          .eq('id', semId);
+      }
+
+      const { error } = await supabase
+        .from('settings')
+        .update({
+          institution_name: institutionName,
+          current_year_id: yearId,
+          current_semester_id: semId,
+          bootstrapped: true,
+        })
+        .eq('user_id', user.id);
+      if (error) throw error;
+
+      navigate(r.home());
+    } finally {
+      setBusy(false);
     }
-
-    let semId = currentSemester?.id;
-    if (!semId) {
-      semId = newId();
-      await db.semesters.add({
-        id: semId,
-        yearId,
-        label: semLabel || 'סמסטר א\'',
-        startDate: semStart,
-        endDate: semEnd,
-      });
-    } else {
-      await db.semesters.update(semId, { label: semLabel, startDate: semStart, endDate: semEnd });
-    }
-
-    await db.settings.put({
-      id: 'app',
-      institutionName,
-      currentYearId: yearId,
-      currentSemesterId: semId,
-      bootstrapped: true,
-    });
-
-    navigate(r.home());
   }
 
-  async function handleReset() {
+  async function handleResetData() {
+    if (!user) return;
     if (!confirm('למחוק את כל הנתונים? לא ניתן לשחזר.')) return;
-    await db.delete();
+    // Delete cascades from years → semesters → subjects → everything else.
+    await supabase.from('years').delete().eq('user_id', user.id);
+    await supabase
+      .from('settings')
+      .update({
+        institution_name: '',
+        current_year_id: null,
+        current_semester_id: null,
+        bootstrapped: false,
+      })
+      .eq('user_id', user.id);
     location.reload();
   }
 
@@ -156,11 +198,11 @@ export function SettingsPage() {
       )}
 
       <div className="flex flex-wrap gap-3">
-        <button type="button" className="btn" onClick={handleSave}>
-          שמור
+        <button type="button" className="btn" onClick={handleSave} disabled={busy}>
+          {busy ? '...' : 'שמור'}
         </button>
         {!isFirstRun && (
-          <button type="button" className="btn-secondary" onClick={handleReset}>
+          <button type="button" className="btn-secondary" onClick={handleResetData}>
             אפס הכל
           </button>
         )}

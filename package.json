@@ -5,13 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc -b && node --require ./scripts/preload-crypto.cjs node_modules/vite/bin/vite.js build",
+    "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@fontsource/heebo": "^5.1.1",
-    "dexie": "^4.0.10",
-    "dexie-react-hooks": "^1.1.7",
+    "@supabase/supabase-js": "^2.105.3",
     "nanoid": "^5.0.9",
     "react": "^18.3.1",
     "react-day-picker": "^9.4.4",
@@ -27,7 +26,6 @@
     "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
-    "vite": "^5.4.11",
-    "vite-plugin-pwa": "^0.21.1"
+    "vite": "^5.4.11"
   }
 }

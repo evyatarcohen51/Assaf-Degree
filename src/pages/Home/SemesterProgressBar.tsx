@@ -1,25 +1,22 @@
-import { useLiveQuery } from 'dexie-react-hooks';
 import { useSettings } from '../../hooks/useSettings';
-import { db } from '../../db';
+import { useAllSemesters } from '../../hooks/useTreeData';
 import { computeProgress, formatDateHe } from '../../lib/progress';
 
 export function SemesterProgressBar() {
   const settings = useSettings();
-  const semester = useLiveQuery(
-    () => (settings?.currentSemesterId ? db.semesters.get(settings.currentSemesterId) : undefined),
-    [settings?.currentSemesterId],
-  );
+  const semesters = useAllSemesters();
+  const semester = semesters.find((s) => s.id === settings?.current_semester_id);
 
   if (!semester) return null;
 
-  const pct = computeProgress(semester.startDate, semester.endDate);
+  const pct = computeProgress(semester.start_date ?? '', semester.end_date ?? '');
 
   return (
     <section className="card">
       <div className="flex items-center justify-between text-sm mb-2">
-        <span className="font-bold">{formatDateHe(semester.startDate)}</span>
+        <span className="font-bold">{formatDateHe(semester.start_date ?? '')}</span>
         <span className="font-display text-lg font-black">{pct}%</span>
-        <span className="font-bold">{formatDateHe(semester.endDate)}</span>
+        <span className="font-bold">{formatDateHe(semester.end_date ?? '')}</span>
       </div>
       <div className="h-6 w-full rounded-full border-2 border-ink bg-cream overflow-hidden">
         <div

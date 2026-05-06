@@ -1,14 +1,31 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
+import { useTable } from '../../lib/useRealtime';
 import { useNote, saveNote } from '../../hooks/useNotes';
 import { FileDropzone } from './FileDropzone';
 import { FileList } from './FileList';
+import type { Subject } from '../../types/domain';
 
 export function SubjectPage() {
+  const { user } = useAuth();
   const { subjectId } = useParams<{ subjectId: string }>();
-  const subject = useLiveQuery(() => (subjectId ? db.subjects.get(subjectId) : undefined), [subjectId]);
+  const subject = useTable<Subject | null>(
+    'subjects',
+    async () => {
+      if (!user || !subjectId) return null;
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('id', subjectId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    [subjectId],
+  );
   const note = useNote(subjectId);
   const [draft, setDraft] = useState('');
 
@@ -17,12 +34,12 @@ export function SubjectPage() {
   }, [subjectId, note?.content]);
 
   useEffect(() => {
-    if (!subjectId) return;
+    if (!subjectId || !user) return;
     const t = setTimeout(() => {
-      if (draft !== (note?.content ?? '')) saveNote(subjectId, draft);
+      if (draft !== (note?.content ?? '')) saveNote(user.id, subjectId, draft);
     }, 500);
     return () => clearTimeout(t);
-  }, [draft, subjectId, note?.content]);
+  }, [draft, subjectId, note?.content, user?.id]);
 
   if (!subjectId) return null;
 

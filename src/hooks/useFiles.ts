@@ -1,57 +1,114 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
-import type { FileRecord } from '../types/domain';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
+import { useTable } from '../lib/useRealtime';
 import { newId } from '../lib/ids';
+import type { FileRecord } from '../types/domain';
 
+const BUCKET = 'user-files';
 const RECENT_CAP = 10;
 
-export function useFilesBySubject(subjectId: string | undefined | null) {
-  return useLiveQuery(
-    () =>
-      subjectId
-        ? db.files.where('subjectId').equals(subjectId).reverse().sortBy('addedAt')
-        : [],
+export function useFilesBySubject(subjectId: string | undefined | null): FileRecord[] {
+  const { user } = useAuth();
+  return useTable<FileRecord[]>(
+    'files',
+    async () => {
+      if (!user || !subjectId) return [];
+      const { data, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('subject_id', subjectId)
+        .order('added_at', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
     [subjectId],
   ) ?? [];
 }
 
-export function useRecentFiles() {
-  return useLiveQuery(async () => {
-    const recents = await db.recentFiles.orderBy('openedAt').reverse().limit(RECENT_CAP).toArray();
-    const ids = recents.map((r) => r.fileId);
-    const files = await db.files.bulkGet(ids);
-    return recents
-      .map((r, i) => ({ recent: r, file: files[i] }))
-      .filter((row): row is { recent: typeof recents[number]; file: FileRecord } => Boolean(row.file));
-  }, []) ?? [];
+export function useRecentFiles(): { recent: { file_id: string; opened_at: string }; file: FileRecord }[] {
+  const { user } = useAuth();
+  return useTable<{ recent: { file_id: string; opened_at: string }; file: FileRecord }[]>(
+    'recent_files',
+    async () => {
+      if (!user) return [];
+      const { data: recents, error: e1 } = await supabase
+        .from('recent_files')
+        .select('file_id, opened_at')
+        .eq('user_id', user.id)
+        .order('opened_at', { ascending: false })
+        .limit(RECENT_CAP);
+      if (e1) throw e1;
+      if (!recents || recents.length === 0) return [];
+      const ids = recents.map((r) => r.file_id);
+      const { data: files, error: e2 } = await supabase
+        .from('files')
+        .select('*')
+        .eq('user_id', user.id)
+        .in('id', ids);
+      if (e2) throw e2;
+      const byId = new Map((files ?? []).map((f) => [f.id, f]));
+      return recents
+        .map((r) => ({ recent: r, file: byId.get(r.file_id) as FileRecord | undefined }))
+        .filter((row): row is { recent: typeof row.recent; file: FileRecord } => Boolean(row.file));
+    },
+  ) ?? [];
 }
 
-export async function addFile(subjectId: string, file: File): Promise<string> {
+export async function addFile(user_id: string, subjectId: string, file: File): Promise<string> {
   const id = newId();
-  const record: FileRecord = {
+  const path = `${user_id}/${id}`;
+  const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
+    contentType: file.type || 'application/octet-stream',
+    upsert: false,
+  });
+  if (upErr) throw upErr;
+  const { error } = await supabase.from('files').insert({
     id,
-    subjectId,
+    user_id,
+    subject_id: subjectId,
     name: file.name,
-    mimeType: file.type || 'application/octet-stream',
+    mime_type: file.type || 'application/octet-stream',
     size: file.size,
-    blob: file,
-    addedAt: Date.now(),
-  };
-  await db.files.add(record);
+    storage_path: path,
+  });
+  if (error) {
+    // Roll back the upload if DB insert fails
+    await supabase.storage.from(BUCKET).remove([path]);
+    throw error;
+  }
   return id;
 }
 
-export async function touchRecent(fileId: string) {
-  await db.recentFiles.put({ fileId, openedAt: Date.now() });
-  // trim
-  const all = await db.recentFiles.orderBy('openedAt').reverse().toArray();
-  if (all.length > RECENT_CAP) {
-    const toDelete = all.slice(RECENT_CAP).map((r) => r.fileId);
-    await db.recentFiles.bulkDelete(toDelete);
+export async function getSignedUrl(path: string, expiresInSeconds = 60): Promise<string> {
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, expiresInSeconds);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+export async function downloadFile(path: string): Promise<Blob> {
+  const { data, error } = await supabase.storage.from(BUCKET).download(path);
+  if (error) throw error;
+  return data;
+}
+
+export async function touchRecent(user_id: string, fileId: string) {
+  await supabase
+    .from('recent_files')
+    .upsert({ user_id, file_id: fileId, opened_at: new Date().toISOString() });
+  // Trim oldest beyond cap
+  const { data: all } = await supabase
+    .from('recent_files')
+    .select('file_id, opened_at')
+    .eq('user_id', user_id)
+    .order('opened_at', { ascending: false });
+  if (all && all.length > RECENT_CAP) {
+    const toDelete = all.slice(RECENT_CAP).map((r) => r.file_id);
+    await supabase.from('recent_files').delete().eq('user_id', user_id).in('file_id', toDelete);
   }
 }
 
-export async function deleteFile(fileId: string) {
-  await db.files.delete(fileId);
-  await db.recentFiles.delete(fileId);
+export async function deleteFile(user_id: string, fileId: string, storagePath: string) {
+  await supabase.storage.from(BUCKET).remove([storagePath]);
+  await supabase.from('files').delete().eq('user_id', user_id).eq('id', fileId);
 }

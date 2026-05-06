@@ -1,45 +1,85 @@
 import { useEffect, useState } from 'react';
 import { useProfile } from '../../hooks/useSettings';
-import { db } from '../../db';
-import { blobToObjectURL } from '../../lib/files';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
+import { getSignedUrl } from '../../hooks/useFiles';
+
+const PROFILE_BUCKET = 'user-files';
 
 export function ProfilePage() {
+  const { user } = useAuth();
   const profile = useProfile();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [pictureUrl, setPictureUrl] = useState<string | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
     setName(profile.name);
     setEmail(profile.email);
-    setBirthDate(profile.birthDate);
-  }, [profile?.id, profile?.name, profile?.email, profile?.birthDate]);
+    setBirthDate(profile.birth_date ?? '');
+  }, [profile?.user_id, profile?.name, profile?.email, profile?.birth_date]);
 
   useEffect(() => {
-    if (profile?.pictureBlob) {
-      const url = blobToObjectURL(profile.pictureBlob);
-      setPictureUrl(url);
-      return () => URL.revokeObjectURL(url);
+    let cancelled = false;
+    async function loadPicture() {
+      if (!profile?.picture_path) {
+        setPictureUrl(undefined);
+        return;
+      }
+      try {
+        const url = await getSignedUrl(profile.picture_path, 60 * 30);
+        if (!cancelled) setPictureUrl(url);
+      } catch {
+        if (!cancelled) setPictureUrl(undefined);
+      }
     }
-    setPictureUrl(undefined);
-  }, [profile?.pictureBlob]);
+    loadPicture();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.picture_path]);
 
   async function handleSave() {
-    await db.profile.put({
-      id: 'me',
-      name,
-      email,
-      birthDate,
-      pictureBlob: profile?.pictureBlob,
-      pictureMime: profile?.pictureMime,
-    });
+    if (!user) return;
+    setBusy(true);
+    try {
+      await supabase
+        .from('profile')
+        .update({
+          name,
+          email,
+          birth_date: birthDate || null,
+        })
+        .eq('user_id', user.id);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handlePicture(file: File | undefined) {
-    if (!file) return;
-    await db.profile.update('me', { pictureBlob: file, pictureMime: file.type });
+    if (!file || !user) return;
+    setBusy(true);
+    try {
+      const path = `${user.id}/profile-${Date.now()}`;
+      const { error: upErr } = await supabase.storage.from(PROFILE_BUCKET).upload(path, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+      if (upErr) throw upErr;
+      // Remove old picture if any
+      if (profile?.picture_path) {
+        await supabase.storage.from(PROFILE_BUCKET).remove([profile.picture_path]);
+      }
+      await supabase
+        .from('profile')
+        .update({ picture_path: path, picture_mime: file.type })
+        .eq('user_id', user.id);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -59,7 +99,7 @@ export function ProfilePage() {
               )}
             </div>
             <label className="btn-secondary text-sm cursor-pointer">
-              העלה תמונה
+              {busy ? '...' : 'העלה תמונה'}
               <input
                 type="file"
                 accept="image/*"
@@ -94,8 +134,8 @@ export function ProfilePage() {
               />
             </label>
             <div>
-              <button type="button" className="btn" onClick={handleSave}>
-                שמור
+              <button type="button" className="btn" onClick={handleSave} disabled={busy}>
+                {busy ? '...' : 'שמור'}
               </button>
             </div>
           </div>

@@ -1,16 +1,13 @@
-import { useLiveQuery } from 'dexie-react-hooks';
 import { useSettings } from '../../hooks/useSettings';
-import { db } from '../../db';
+import { useAllSemesters } from '../../hooks/useTreeData';
 
 export function CurrentTrackHeader() {
   const settings = useSettings();
-  const semester = useLiveQuery(
-    () => (settings?.currentSemesterId ? db.semesters.get(settings.currentSemesterId) : undefined),
-    [settings?.currentSemesterId],
-  );
+  const semesters = useAllSemesters();
+  const semester = semesters.find((s) => s.id === settings?.current_semester_id);
 
   const label = semester?.label || 'מסלול';
-  const institution = settings?.institutionName || '';
+  const institution = settings?.institution_name || '';
 
   return (
     <header className="card flex flex-col items-center text-center gap-2 bg-yellow">

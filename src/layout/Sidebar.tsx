@@ -1,8 +1,11 @@
 import { NavLink } from 'react-router-dom';
 import { SidebarTree } from './SidebarTree';
 import { r } from '../lib/routes';
+import { signOut, useAuth } from '../lib/auth';
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+  const { user } = useAuth();
+
   return (
     <nav className="flex h-full flex-col gap-1 overflow-y-auto pb-6" onClick={onNavigate}>
       <div className="hidden md:block mb-4">
@@ -18,6 +21,19 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to={r.profile()} label="פרופיל" colorClass="bg-orange" rotate="-rotate-sticker" />
         <NavItem to={r.settings()} label="הגדרות" colorClass="bg-blue" rotate="rotate-sticker" />
       </div>
+
+      {user && (
+        <div className="mt-auto pt-4 border-t-2 border-ink/20">
+          <p className="text-xs text-ink/60 truncate" dir="ltr">{user.email}</p>
+          <button
+            type="button"
+            className="btn-secondary mt-2 w-full text-sm"
+            onClick={() => signOut()}
+          >
+            התנתק
+          </button>
+        </div>
+      )}
     </nav>
   );
 }

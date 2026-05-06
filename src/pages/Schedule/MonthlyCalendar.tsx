@@ -2,14 +2,43 @@ import { useState } from 'react';
 import { DayPicker } from 'react-day-picker';
 import { he } from 'react-day-picker/locale';
 import 'react-day-picker/style.css';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
+import { useTable } from '../../lib/useRealtime';
+import type { Deadline, Semester, Subject } from '../../types/domain';
 
 export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
+  const { user } = useAuth();
   const [selected, setSelected] = useState<Date | undefined>(new Date());
-  const semester = useLiveQuery(() => db.semesters.get(semesterId), [semesterId]);
-  const deadlines = useLiveQuery(() => db.deadlines.toArray(), []) ?? [];
-  const subjects = useLiveQuery(() => db.subjects.toArray(), []) ?? [];
+  const semester = useTable<Semester | null>(
+    'semesters',
+    async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('semesters')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('id', semesterId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    [semesterId],
+  );
+  const deadlines =
+    useTable<Deadline[]>('deadlines', async () => {
+      if (!user) return [];
+      const { data, error } = await supabase.from('deadlines').select('*').eq('user_id', user.id);
+      if (error) throw error;
+      return data ?? [];
+    }) ?? [];
+  const subjects =
+    useTable<Subject[]>('subjects', async () => {
+      if (!user) return [];
+      const { data, error } = await supabase.from('subjects').select('*').eq('user_id', user.id);
+      if (error) throw error;
+      return data ?? [];
+    }) ?? [];
 
   const deadlineDates = deadlines.map((d) => new Date(d.date));
   const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name ?? '—';
@@ -30,8 +59,8 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
           onSelect={setSelected}
           modifiers={{ hasDeadline: deadlineDates }}
           modifiersClassNames={{ hasDeadline: 'bg-red text-cream rounded-full' }}
-          fromDate={semester?.startDate ? new Date(semester.startDate) : undefined}
-          toDate={semester?.endDate ? new Date(semester.endDate) : undefined}
+          fromDate={semester?.start_date ? new Date(semester.start_date) : undefined}
+          toDate={semester?.end_date ? new Date(semester.end_date) : undefined}
         />
       </div>
       <div className="flex-1">
@@ -46,7 +75,7 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
                   <bdi>{d.title}</bdi>
                 </div>
                 <div className="text-xs text-ink/60">
-                  <bdi>{subjectName(d.subjectId)}</bdi>
+                  <bdi>{subjectName(d.subject_id)}</bdi>
                 </div>
               </li>
             ))}

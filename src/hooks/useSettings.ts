@@ -1,10 +1,32 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
+import { useTable } from '../lib/useRealtime';
+import type { Settings, Profile } from '../types/domain';
 
-export function useSettings() {
-  return useLiveQuery(() => db.settings.get('app'), []);
+export function useSettings(): Settings | undefined {
+  const { user } = useAuth();
+  return useTable<Settings | null>('settings', async () => {
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from('settings')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }) ?? undefined;
 }
 
-export function useProfile() {
-  return useLiveQuery(() => db.profile.get('me'), []);
+export function useProfile(): Profile | undefined {
+  const { user } = useAuth();
+  return useTable<Profile | null>('profile', async () => {
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from('profile')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }) ?? undefined;
 }
