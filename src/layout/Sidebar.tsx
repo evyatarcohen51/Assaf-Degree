@@ -13,7 +13,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <nav className="flex h-full flex-col gap-1 overflow-y-auto pb-6" onClick={onNavigate}>
-      <div className="hidden md:block mb-4">
+      <div className="hidden lg:block mb-4">
         <h1 className="font-display text-2xl font-black tracking-tight">Got Schooled</h1>
         <p className="text-xs text-ink/60">ניהול לימודים אישי</p>
       </div>

@@ -1,6 +1,6 @@
 export function HamburgerHeader({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   return (
-    <header className="md:hidden fixed top-0 inset-x-0 z-50 flex items-center justify-between border-b-2 border-ink bg-cream px-4 py-3">
+    <header className="lg:hidden fixed top-0 inset-x-0 z-50 flex items-center justify-between border-b-2 border-ink bg-cream px-4 py-3">
       <h1 className="font-display text-2xl font-black tracking-tight">Got Schooled</h1>
       <button
         type="button"
