@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useTable } from '../../lib/useRealtime';
+import { SUBJECT_COLOR_BG, isSubjectColor } from '../../lib/subjectColors';
 import type { ScheduleSlot, Subject, Weekday } from '../../types/domain';
 
 const WEEKDAYS = [
@@ -13,7 +14,6 @@ const WEEKDAYS = [
   { value: 5 as Weekday, label: 'שישי' },
 ];
 const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i);
-const DAY_COLORS = ['bg-yellow', 'bg-orange', 'bg-red', 'bg-purple', 'bg-blue', 'bg-green'];
 
 const CELL_PX = 48; // matches the row height (3rem)
 const SNAP_MIN = 15; // resize/move granularity
@@ -61,6 +61,7 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
   );
 
   const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name ?? '?';
+  const subjectColor = (id: string) => subjects.find((s) => s.id === id)?.color ?? null;
 
   function clearOverride(slotId: string) {
     setOverrides((prev) => {
@@ -210,7 +211,7 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
           <div
             key={`hdr-${d.value}`}
             style={{ gridColumn: i + 2, gridRow: 1 }}
-            className={`p-2 text-center font-display font-bold uppercase border-b-2 border-s-2 border-ink ${DAY_COLORS[i] ?? 'bg-cream'}`}
+            className="p-2 text-center font-display font-bold uppercase border-b-2 border-s-2 border-ink bg-paper"
           >
             {d.label}
           </div>
@@ -248,7 +249,8 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
 
         {/* Slot blocks — explicit positions, on top of cells */}
         {positioned.map(({ slot, dayIdx, startRow, span }) => {
-          const colorIdx = dayIdx % DAY_COLORS.length;
+          const color = subjectColor(slot.subject_id);
+          const stripeBg = isSubjectColor(color) ? SUBJECT_COLOR_BG[color] : 'bg-ink/30';
           return (
             <div
               key={`slot-${slot.id}`}
@@ -256,19 +258,19 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
                 gridColumn: dayIdx + 2,
                 gridRow: `${startRow + 2} / span ${span}`,
               }}
-              className={`relative m-0.5 z-10 rounded-md border-2 border-ink ${DAY_COLORS[colorIdx]}/70 overflow-hidden`}
+              className="relative m-0.5 z-10 rounded-md border-2 border-ink bg-cream overflow-hidden"
             >
-              {/* Top resize handle */}
+              {/* Top resize handle — also doubles as the subject color stripe */}
               <div
                 onMouseDown={(e) => startResize('top', slot, e)}
-                className="absolute top-0 inset-x-0 h-2 cursor-ns-resize bg-ink/30 hover:bg-ink/60 z-20"
+                className={`absolute top-0 inset-x-0 h-2 cursor-ns-resize ${stripeBg} z-20`}
                 aria-label="מתח למעלה"
               />
               {/* Body — draggable for moving */}
               <div
                 draggable
                 onDragStart={(e) => handleDragStart(e, slot.id)}
-                className="px-2 py-2 text-xs font-bold cursor-grab active:cursor-grabbing h-full bg-cream/60"
+                className="px-2 py-2 text-xs font-bold cursor-grab active:cursor-grabbing h-full"
                 title="גרור כדי להזיז"
               >
                 <bdi>{subjectName(slot.subject_id)}</bdi>

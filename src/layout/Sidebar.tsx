@@ -3,6 +3,11 @@ import { SidebarTree } from './SidebarTree';
 import { r } from '../lib/routes';
 import { signOut, useAuth } from '../lib/auth';
 
+// Toggle: true = straight nav buttons (new), false = sticker rotation (classic).
+const USE_STRAIGHT_NAV_ITEMS = true;
+const navRotate = (cls: string): string | undefined =>
+  USE_STRAIGHT_NAV_ITEMS ? undefined : cls;
+
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
 
@@ -13,14 +18,14 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <p className="text-xs text-ink/60">ניהול לימודים אישי</p>
       </div>
 
-      <NavItem to={r.home()} label="דף הבית" colorClass="bg-yellow" rotate="rotate-sticker" />
+      <NavItem to={r.home()} label="דף הבית" colorClass="bg-yellow" rotate={navRotate('rotate-sticker')} />
 
       <SidebarTree />
 
-      <div className="mt-2 flex flex-col gap-1">
-        <NavItem to={r.credits()} label="נקודות זכות" colorClass="bg-purple" rotate="-rotate-sticker" />
-        <NavItem to={r.profile()} label="פרופיל" colorClass="bg-orange" rotate="rotate-sticker" />
-        <NavItem to={r.settings()} label="הגדרות" colorClass="bg-blue" rotate="-rotate-sticker" />
+      <div className="mt-2 flex flex-col gap-2">
+        <NavItem to={r.credits()} label="נקודות זכות" colorClass="bg-yellow" rotate={navRotate('-rotate-sticker')} />
+        <NavItem to={r.profile()} label="פרופיל" colorClass="bg-yellow" rotate={navRotate('rotate-sticker')} />
+        <NavItem to={r.settings()} label="הגדרות" colorClass="bg-yellow" rotate={navRotate('-rotate-sticker')} />
       </div>
 
       {user && (
@@ -55,7 +60,7 @@ function NavItem({
       to={to}
       end={to === '/'}
       className={({ isActive }) =>
-        `block ${rotate ?? ''} ${
+        `block rounded-lg ${rotate ?? ''} ${
           isActive ? 'shadow-sticker-lg' : 'shadow-sticker'
         } border-2 border-ink ${colorClass} px-4 py-2 font-display font-bold uppercase text-ink`
       }

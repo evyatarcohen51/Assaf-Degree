@@ -50,17 +50,28 @@ export function TopicCard({
   return (
     <Link
       to={r.topic(yearId, semId, subjectId, topic.id)}
-      className={`relative flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl border-2 border-ink ${COLOR_BG[topic.color]} ${TEXT_ON_COLOR[topic.color]} p-4 shadow-sticker font-display font-black text-xl text-center`}
+      className="block aspect-square"
     >
-      <bdi className="break-words">{topic.name}</bdi>
-      <button
-        type="button"
-        onClick={handleDelete}
-        aria-label="מחק נושא"
-        className="absolute top-2 left-2 h-6 w-6 rounded-full border-2 border-ink bg-cream text-ink text-xs font-bold leading-none flex items-center justify-center"
-      >
-        ×
-      </button>
+      <div className="flex h-full flex-col">
+        {/* Folder tab — top-start (right in RTL), narrower than body */}
+        <div
+          className={`h-[16%] w-2/5 self-start rounded-t-xl border-2 border-b-0 border-ink ${COLOR_BG[topic.color]}`}
+        />
+        {/* Folder body */}
+        <div
+          className={`relative -mt-px flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl rounded-ts-none border-2 border-ink ${COLOR_BG[topic.color]} ${TEXT_ON_COLOR[topic.color]} p-4 shadow-sticker font-display font-black text-xl text-center`}
+        >
+          <bdi className="break-words">{topic.name}</bdi>
+          <button
+            type="button"
+            onClick={handleDelete}
+            aria-label="מחק נושא"
+            className="absolute top-2 left-2 h-6 w-6 rounded-full border-2 border-ink bg-cream text-ink text-xs font-bold leading-none flex items-center justify-center"
+          >
+            ×
+          </button>
+        </div>
+      </div>
     </Link>
   );
 }

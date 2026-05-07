@@ -3,6 +3,7 @@ import { useSubjectsBySemester } from '../../hooks/useTreeData';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { newId } from '../../lib/ids';
+import { SUBJECT_COLORS, SUBJECT_COLOR_BG, type SubjectColor } from '../../lib/subjectColors';
 import type { Subject } from '../../types/domain';
 
 export function SubjectsSection({ semesterId }: { semesterId: string }) {
@@ -50,6 +51,16 @@ export function SubjectsSection({ semesterId }: { semesterId: string }) {
     const { error } = await supabase
       .from('subjects')
       .update({ credit_points: cp })
+      .eq('user_id', user.id)
+      .eq('id', id);
+    if (error) alert(`עדכון נכשל: ${error.message}`);
+  }
+
+  async function handleUpdateColor(id: string, color: SubjectColor | null) {
+    if (!user) return;
+    const { error } = await supabase
+      .from('subjects')
+      .update({ color })
       .eq('user_id', user.id)
       .eq('id', id);
     if (error) alert(`עדכון נכשל: ${error.message}`);
@@ -108,11 +119,30 @@ export function SubjectsSection({ semesterId }: { semesterId: string }) {
         {display.map((s) => (
           <li
             key={s.id}
-            className="flex items-center justify-between gap-3 rounded-xl border-2 border-ink bg-paper px-3 py-2"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-ink bg-paper px-3 py-2"
           >
-            <span className="font-bold flex-1">
+            <span className="font-bold flex-1 min-w-[8rem]">
               <bdi>{s.name}</bdi>
             </span>
+            <div
+              role="radiogroup"
+              aria-label="צבע קורס"
+              className="flex flex-wrap items-center gap-2"
+            >
+              {SUBJECT_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  role="radio"
+                  aria-checked={s.color === c}
+                  aria-label={c}
+                  onClick={() => handleUpdateColor(s.id, c)}
+                  className={`h-8 w-8 rounded-full border-2 border-ink ${SUBJECT_COLOR_BG[c]} ${
+                    s.color === c ? 'shadow-sticker' : ''
+                  }`}
+                />
+              ))}
+            </div>
             <label className="flex items-center gap-2 text-sm">
               <span className="text-ink/70">נק׳ זכות</span>
               <input

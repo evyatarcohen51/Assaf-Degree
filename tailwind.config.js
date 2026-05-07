@@ -16,6 +16,12 @@ export default {
         yellow: '#F1B333',
         blue: '#0080FF',
         purple: '#6758A5',
+        // Pastel variants used for the year-color stripes in SidebarTree.
+        'blue-light': '#A5D2FF',
+        'green-light': '#AAD9CA',
+        'yellow-light': '#FAE4B8',
+        'red-light': '#EBBABA',
+        'orange-light': '#FACFB8',
       },
       fontFamily: {
         display: ['"Heebo"', 'system-ui', 'sans-serif'],
