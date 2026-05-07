@@ -90,7 +90,7 @@ function YearRow({
 }) {
   const { user } = useAuth();
   const [label, setLabel] = useState(year.label);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [newSemLabel, setNewSemLabel] = useState('');
   const [newSemStart, setNewSemStart] = useState('');
   const [newSemEnd, setNewSemEnd] = useState('');
