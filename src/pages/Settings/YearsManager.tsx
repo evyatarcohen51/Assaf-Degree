@@ -132,7 +132,7 @@ function YearRow({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="font-bold text-lg"
+          className="font-bold text-3xl leading-none px-2 py-1 min-w-[2.5rem]"
           aria-label={open ? 'סגור' : 'פתח'}
         >
           {open ? '▾' : '▸'}
@@ -166,7 +166,7 @@ function YearRow({
               ))}
             </ul>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
             <input
               className="field"
               value={newSemLabel}
@@ -176,13 +176,13 @@ function YearRow({
             />
             <input
               type="date"
-              className="field"
+              className="field min-w-[10rem]"
               value={newSemStart}
               onChange={(e) => setNewSemStart(e.target.value)}
             />
             <input
               type="date"
-              className="field"
+              className="field min-w-[10rem]"
               value={newSemEnd}
               onChange={(e) => setNewSemEnd(e.target.value)}
             />
@@ -214,7 +214,7 @@ function SemesterRow({
   const [end, setEnd] = useState(semester.end_date ?? '');
 
   return (
-    <li className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-2 items-center rounded-lg border-2 border-ink bg-paper px-3 py-2">
+    <li className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-3 items-center rounded-lg border-2 border-ink bg-paper px-3 py-2">
       <input
         className="field"
         value={label}
@@ -224,14 +224,14 @@ function SemesterRow({
       />
       <input
         type="date"
-        className="field"
+        className="field min-w-[10rem]"
         value={start}
         onChange={(e) => setStart(e.target.value)}
         onBlur={() => start !== (semester.start_date ?? '') && onUpdate({ start_date: start || null })}
       />
       <input
         type="date"
-        className="field"
+        className="field min-w-[10rem]"
         value={end}
         onChange={(e) => setEnd(e.target.value)}
         onBlur={() => end !== (semester.end_date ?? '') && onUpdate({ end_date: end || null })}

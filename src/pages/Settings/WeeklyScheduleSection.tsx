@@ -110,7 +110,7 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
         <p className="text-sm text-ink/60">הוסף קורסים תחילה</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
             <select
               className="field"
               value={subjectId}
@@ -136,13 +136,13 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
             </select>
             <input
               type="time"
-              className="field"
+              className="field min-w-[7rem]"
               value={start}
               onChange={(e) => setStart(e.target.value)}
             />
             <input
               type="time"
-              className="field"
+              className="field min-w-[7rem]"
               value={end}
               onChange={(e) => setEnd(e.target.value)}
             />
