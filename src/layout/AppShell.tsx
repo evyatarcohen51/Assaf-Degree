@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Sidebar onNavigate={() => setOpen(false)} />
       </aside>
 
-      <main className="lg:me-72 min-h-screen p-4 pt-20 lg:pt-6">
+      <main className="lg:ms-72 min-h-screen p-4 pt-20 lg:pt-6">
         <div className="mx-auto max-w-5xl">{children}</div>
       </main>
     </div>
