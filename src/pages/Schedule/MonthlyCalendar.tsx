@@ -3,7 +3,11 @@ import { HDate, HebrewCalendar } from '@hebcal/core';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useTable } from '../../lib/useRealtime';
-import type { Deadline, Semester, Subject } from '../../types/domain';
+import type { Deadline, Semester, ScheduleSlot, Subject } from '../../types/domain';
+
+function fmtTime(min: number): string {
+  return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`;
+}
 
 // Hebrew day numerals 1–30 (avoiding יה/יו per tradition)
 const HDAY = [
@@ -79,6 +83,21 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
       if (error) throw error;
       return data ?? [];
     }) ?? [];
+  const slots =
+    useTable<ScheduleSlot[]>(
+      'schedule_slots',
+      async () => {
+        if (!user) return [];
+        const { data, error } = await supabase
+          .from('schedule_slots')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('semester_id', semesterId);
+        if (error) throw error;
+        return data ?? [];
+      },
+      [semesterId],
+    ) ?? [];
 
   function prevMonth() {
     if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
@@ -128,6 +147,22 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
 
   const semStartKey = semester?.start_date ? dateKey(parseDateLocal(semester.start_date)) : null;
   const semEndKey = semester?.end_date ? dateKey(parseDateLocal(semester.end_date)) : null;
+
+  // Expand weekly slots into every concrete date within the semester range
+  const slotsByDate = useMemo(() => {
+    const map = new Map<string, ScheduleSlot[]>();
+    if (!semester?.start_date || !semester?.end_date || slots.length === 0) return map;
+    const start = parseDateLocal(semester.start_date);
+    const end = parseDateLocal(semester.end_date);
+    const cur = new Date(start);
+    while (cur <= end) {
+      const dow = cur.getDay();
+      const daySlots = slots.filter(s => s.weekday === dow);
+      if (daySlots.length > 0) map.set(dateKey(cur), daySlots);
+      cur.setDate(cur.getDate() + 1);
+    }
+    return map;
+  }, [slots, semester]);
 
   const deadlinesByDate = useMemo(() => {
     const map = new Map<string, Deadline[]>();
@@ -232,12 +267,39 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
                   </div>
                 )}
 
-                {/* Holidays (up to 2) */}
-                {dayHols.slice(0, 2).map((h, hi) => (
+                {/* Holidays (up to 1) */}
+                {dayHols.slice(0, 1).map((h, hi) => (
                   <div key={hi} className="text-[9px] font-medium text-red leading-tight truncate" title={h}>{h}</div>
                 ))}
 
-                {/* Deadline colored dots */}
+                {/* Schedule slot chips */}
+                {(() => {
+                  const daySlots = slotsByDate.get(key) ?? [];
+                  if (daySlots.length === 0) return null;
+                  const visible = daySlots.slice(0, 2);
+                  const extra = daySlots.length - visible.length;
+                  return (
+                    <div className="flex flex-col gap-0.5 mt-0.5">
+                      {visible.map(s => {
+                        const sub = subjectOf(s.subject_id);
+                        const hex = sub?.color ? (COLOR_HEX[sub.color] ?? '#555') : '#555';
+                        return (
+                          <div
+                            key={s.id}
+                            style={{ background: hex }}
+                            className="text-[8px] font-bold text-white leading-tight px-1 py-0.5 rounded truncate"
+                            title={`${sub?.name ?? '?'} ${fmtTime(s.start_minutes)}–${fmtTime(s.end_minutes)}`}
+                          >
+                            {sub?.name ?? '?'}
+                          </div>
+                        );
+                      })}
+                      {extra > 0 && <div className="text-[8px] text-ink/50">+{extra}</div>}
+                    </div>
+                  );
+                })()}
+
+                {/* Deadline dots */}
                 {dayDls.length > 0 && (
                   <div className="mt-auto pt-0.5 flex gap-1 flex-wrap">
                     {dayDls.map(d => {
@@ -263,7 +325,11 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
         {/* Legend — active items glow when present on selected day */}
         {(() => {
           const selDls = deadlinesByDate.get(selectedKey) ?? [];
-          const activeSubjectIds = new Set(selDls.map(d => d.subject_id));
+          const selSlots = slotsByDate.get(selectedKey) ?? [];
+          const activeSubjectIds = new Set([
+            ...selDls.map(d => d.subject_id),
+            ...selSlots.map(s => s.subject_id),
+          ]);
           const hasSelHoliday = (holidays.get(selectedKey) ?? []).length > 0;
           const hasSelSem = selectedKey === semStartKey || selectedKey === semEndKey;
           return (
@@ -292,7 +358,7 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
 
       {/* ── Detail panel ─────────────────────────────────────── */}
       <div className="w-full lg:w-72 shrink-0">
-        <h3 className="font-display font-bold uppercase mb-2">מועדים ביום הנבחר</h3>
+        <h3 className="font-display font-bold uppercase mb-2">סיכום יום</h3>
 
         {/* Semester boundary */}
         {(selectedKey === semStartKey || selectedKey === semEndKey) && (
@@ -315,25 +381,61 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
           </div>
         )}
 
+        {/* Schedule slots for the day */}
+        {(() => {
+          const daySlots = (slotsByDate.get(selectedKey) ?? [])
+            .slice()
+            .sort((a, b) => a.start_minutes - b.start_minutes);
+          if (daySlots.length === 0) return null;
+          return (
+            <div className="mb-3">
+              <div className="text-[10px] font-bold text-ink/50 uppercase mb-1">שיעורים</div>
+              <ul className="flex flex-col gap-1.5">
+                {daySlots.map(s => {
+                  const sub = subjectOf(s.subject_id);
+                  const hex = sub?.color ? (COLOR_HEX[sub.color] ?? undefined) : undefined;
+                  return (
+                    <li key={s.id} className="rounded-xl border-2 border-ink bg-paper px-3 py-2 overflow-hidden">
+                      {hex && <div className="h-1.5 -mx-3 -mt-2 mb-2" style={{ background: hex }} />}
+                      <div className="font-bold text-sm"><bdi>{sub?.name ?? '?'}</bdi></div>
+                      <div className="text-xs text-ink/60">
+                        {fmtTime(s.start_minutes)}–{fmtTime(s.end_minutes)}
+                        {s.room ? ` · ${s.room}` : ''}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })()}
+
+        {/* Deadlines for the day */}
         {dayDeadlines.length > 0 && (
-          <ul className="flex flex-col gap-2">
-            {dayDeadlines.map(d => {
-              const sub = subjectOf(d.subject_id);
-              const hex = sub?.color ? (COLOR_HEX[sub.color] ?? undefined) : undefined;
-              return (
-                <li key={d.id} className="rounded-xl border-2 border-ink bg-paper px-3 py-2 overflow-hidden">
-                  {hex && (
-                    <div className="h-1.5 rounded-full mb-2 -mx-3 -mt-2" style={{ background: hex }} />
-                  )}
-                  <div className="font-bold"><bdi>{d.title}</bdi></div>
-                  <div className="text-xs text-ink/60"><bdi>{sub?.name ?? '—'}</bdi></div>
-                </li>
-              );
-            })}
-          </ul>
+          <div>
+            <div className="text-[10px] font-bold text-ink/50 uppercase mb-1">מועדים</div>
+            <ul className="flex flex-col gap-2">
+              {dayDeadlines.map(d => {
+                const sub = subjectOf(d.subject_id);
+                const hex = sub?.color ? (COLOR_HEX[sub.color] ?? undefined) : undefined;
+                return (
+                  <li key={d.id} className="rounded-xl border-2 border-ink bg-paper px-3 py-2 overflow-hidden">
+                    {hex && (
+                      <div className="h-1.5 -mx-3 -mt-2 mb-2" style={{ background: hex }} />
+                    )}
+                    <div className="font-bold"><bdi>{d.title}</bdi></div>
+                    <div className="text-xs text-ink/60"><bdi>{sub?.name ?? '—'}</bdi></div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
 
-        {dayDeadlines.length === 0 && selectedKey !== semStartKey && selectedKey !== semEndKey && selectedHolidays.length === 0 && (
+        {dayDeadlines.length === 0 &&
+         (slotsByDate.get(selectedKey) ?? []).length === 0 &&
+         selectedKey !== semStartKey && selectedKey !== semEndKey &&
+         selectedHolidays.length === 0 && (
           <p className="text-sm text-ink/50">אין מועדים</p>
         )}
       </div>
