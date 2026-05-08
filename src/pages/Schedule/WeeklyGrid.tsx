@@ -13,11 +13,16 @@ const WEEKDAYS = [
   { value: 4 as Weekday, label: 'חמישי' },
   { value: 5 as Weekday, label: 'שישי' },
 ];
-const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i);
 
-const CELL_PX = 48; // matches the row height (3rem)
-const SNAP_MIN = 15; // resize/move granularity
-const PX_PER_MIN = CELL_PX / 60;
+const START_MIN = 8 * 60;   // 480
+const END_MIN = 22 * 60;    // 1320
+const SLOT_MIN = 15;
+const TOTAL_SLOTS = (END_MIN - START_MIN) / SLOT_MIN; // 56
+const SLOTS = Array.from({ length: TOTAL_SLOTS }, (_, i) => START_MIN + i * SLOT_MIN);
+
+const CELL_PX = 12;  // px per 15-min row → 48px/hour, same visual density as before
+const SNAP_MIN = 15;
+const PX_PER_MIN = CELL_PX / SLOT_MIN; // 0.8 — unchanged
 
 const DRAG_TYPE = 'application/x-got-schooled-slot';
 
@@ -52,7 +57,7 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
     }) ?? [];
 
   const [overrides, setOverrides] = useState<LocalOverrides>({});
-  const [dragOver, setDragOver] = useState<{ day: number; hour: number } | null>(null);
+  const [dragOver, setDragOver] = useState<{ day: number; slotMin: number } | null>(null);
   const overridesRef = useRef(overrides);
   overridesRef.current = overrides;
 
@@ -94,18 +99,18 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
     e.dataTransfer.setData(DRAG_TYPE, slotId);
     e.dataTransfer.effectAllowed = 'move';
   }
-  function handleDragOver(e: React.DragEvent, day: number, hour: number) {
+  function handleDragOver(e: React.DragEvent, day: number, slotMin: number) {
     if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    if (dragOver?.day !== day || dragOver?.hour !== hour) {
-      setDragOver({ day, hour });
+    if (dragOver?.day !== day || dragOver?.slotMin !== slotMin) {
+      setDragOver({ day, slotMin });
     }
   }
   function handleDragLeave() {
     setDragOver(null);
   }
-  async function handleDrop(e: React.DragEvent, day: Weekday, hour: number) {
+  async function handleDrop(e: React.DragEvent, day: Weekday, slotMin: number) {
     e.preventDefault();
     setDragOver(null);
     const slotId = e.dataTransfer.getData(DRAG_TYPE);
@@ -113,10 +118,9 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
     const slot = slots.find((s) => s.id === slotId);
     if (!slot) return;
     const duration = slot.end_minutes - slot.start_minutes;
-    const minuteOffset = slot.start_minutes % 60;
-    const newStart = hour * 60 + minuteOffset;
+    const newStart = slotMin;
     const newEnd = newStart + duration;
-    if (newEnd > 24 * 60) return;
+    if (newEnd > END_MIN) return;
     if (slot.weekday === day && slot.start_minutes === newStart) return;
     setOverrides((prev) => ({
       ...prev,
@@ -143,7 +147,7 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
       const deltaMinRaw = deltaY / PX_PER_MIN;
       const deltaMin = Math.round(deltaMinRaw / SNAP_MIN) * SNAP_MIN;
       if (edge === 'top') {
-        const newStart = Math.max(0, originalStart + deltaMin);
+        const newStart = Math.max(START_MIN, originalStart + deltaMin);
         if (newStart >= originalEnd) return;
         lastChange = {
           weekday: slot.weekday,
@@ -151,7 +155,7 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
           end_minutes: originalEnd,
         };
       } else {
-        const newEnd = Math.min(24 * 60, originalEnd + deltaMin);
+        const newEnd = Math.min(END_MIN, originalEnd + deltaMin);
         if (newEnd <= originalStart) return;
         lastChange = {
           weekday: slot.weekday,
@@ -182,13 +186,11 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
   const positioned = slots
     .map((s) => {
       const dayIdx = WEEKDAYS.findIndex((d) => d.value === s.weekday);
-      const startHour = Math.floor(s.start_minutes / 60);
-      const endHour = Math.ceil(s.end_minutes / 60);
-      const startRow = HOURS.indexOf(startHour);
-      const span = Math.max(1, endHour - startHour);
+      const startRow = (s.start_minutes - START_MIN) / SLOT_MIN;
+      const span = Math.max(1, Math.ceil((s.end_minutes - s.start_minutes) / SLOT_MIN));
       return { slot: s, dayIdx, startRow, span };
     })
-    .filter((p) => p.dayIdx >= 0 && p.startRow >= 0);
+    .filter((p) => p.dayIdx >= 0 && p.startRow >= 0 && p.startRow < TOTAL_SLOTS);
 
   return (
     <div className="overflow-x-auto">
@@ -199,10 +201,10 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
         className="grid border-2 border-ink rounded-xl overflow-hidden min-w-[42rem]"
         style={{
           gridTemplateColumns: `4rem repeat(${WEEKDAYS.length}, minmax(0, 1fr))`,
-          gridTemplateRows: `auto repeat(${HOURS.length}, ${CELL_PX}px)`,
+          gridTemplateRows: `auto repeat(${SLOTS.length}, ${CELL_PX}px)`,
         }}
       >
-        {/* Header row — explicit positions so slot blocks below don't shift them */}
+        {/* Header row */}
         <div
           style={{ gridColumn: 1, gridRow: 1 }}
           className="bg-paper p-2 font-display text-xs uppercase border-b-2 border-ink"
@@ -217,37 +219,60 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
           </div>
         ))}
 
-        {/* Hour labels — explicit row */}
-        {HOURS.map((h, i) => (
-          <div
-            key={`hour-${h}`}
-            style={{ gridColumn: 1, gridRow: i + 2 }}
-            className="bg-paper p-2 text-xs font-bold border-t-2 border-ink/30 text-center flex items-center justify-center"
-          >
-            {h}:00
-          </div>
-        ))}
+        {/* Time labels — one row per 15-min slot */}
+        {SLOTS.map((slotMin, i) => {
+          const h = Math.floor(slotMin / 60);
+          const m = slotMin % 60;
+          const isHour = m === 0;
+          const isHalf = m === 30;
+          return (
+            <div
+              key={`label-${slotMin}`}
+              style={{ gridColumn: 1, gridRow: i + 2 }}
+              className={`bg-paper flex items-center justify-center leading-none ${
+                isHour
+                  ? 'border-t-2 border-ink/30'
+                  : isHalf
+                    ? 'border-t border-ink/20'
+                    : 'border-t border-ink/10'
+              }`}
+            >
+              {isHour ? (
+                <span className="text-[10px] font-bold">{`${h}:00`}</span>
+              ) : (
+                <span className="text-[8px] text-ink/40">{`:${String(m).padStart(2, '0')}`}</span>
+              )}
+            </div>
+          );
+        })}
 
-        {/* Drop cells — explicit positions */}
-        {HOURS.map((h, hi) =>
+        {/* Drop cells — one per 15-min slot per day */}
+        {SLOTS.map((slotMin, si) =>
           WEEKDAYS.map((d, di) => {
-            const isDragOver = dragOver?.day === d.value && dragOver?.hour === h;
+            const isDragOver = dragOver?.day === d.value && dragOver?.slotMin === slotMin;
+            const m = slotMin % 60;
+            const isHour = m === 0;
+            const isHalf = m === 30;
             return (
               <div
-                key={`cell-${d.value}-${h}`}
-                style={{ gridColumn: di + 2, gridRow: hi + 2 }}
-                onDragOver={(e) => handleDragOver(e, d.value, h)}
+                key={`cell-${d.value}-${slotMin}`}
+                style={{ gridColumn: di + 2, gridRow: si + 2 }}
+                onDragOver={(e) => handleDragOver(e, d.value, slotMin)}
                 onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, d.value, h)}
-                className={`border-t-2 border-s-2 border-ink/20 ${
-                  isDragOver ? 'ring-2 ring-ink ring-inset bg-ink/5' : ''
-                }`}
+                onDrop={(e) => handleDrop(e, d.value, slotMin)}
+                className={`border-s-2 border-ink/20 ${
+                  isHour
+                    ? 'border-t-2 border-ink/20'
+                    : isHalf
+                      ? 'border-t border-ink/15'
+                      : 'border-t border-ink/[0.06]'
+                } ${isDragOver ? 'ring-2 ring-ink ring-inset bg-ink/5' : ''}`}
               />
             );
           }),
         )}
 
-        {/* Slot blocks — explicit positions, on top of cells */}
+        {/* Slot blocks */}
         {positioned.map(({ slot, dayIdx, startRow, span }) => {
           const color = subjectColor(slot.subject_id);
           const stripeBg = isSubjectColor(color) ? SUBJECT_COLOR_BG[color] : 'bg-ink/30';
