@@ -30,6 +30,15 @@ const STRIPE_DARK: Record<YearColor, string> = {
   red: 'bg-red',
   orange: 'bg-orange',
 };
+// Subject-specific stripe — uses the subject's own color, falls back to year color.
+const STRIPE_SUBJECT: Record<string, string> = {
+  yellow: 'bg-yellow',
+  orange: 'bg-orange',
+  red: 'bg-red',
+  purple: 'bg-purple',
+  blue: 'bg-blue',
+  green: 'bg-green',
+};
 
 function colorForYearIndex(i: number): YearColor {
   return YEAR_COLORS[i % YEAR_COLORS.length];
@@ -179,23 +188,26 @@ function SemesterNode({
               מערכת שעות
             </NavLink>
           </li>
-          {subjects.map((sub) => (
-            <li key={sub.id}>
-              <NavLink
-                to={r.subject(year.id, semester.id, sub.id)}
-                className={({ isActive }) =>
-                  USE_NEW_TREE_DESIGN
-                    ? `block relative overflow-hidden rounded-md border-2 border-ink bg-smoke ps-4 pe-2 py-1 font-display text-sm font-bold text-ink ${isActive ? 'shadow-sticker' : ''}`
-                    : `block rounded-md border-2 border-ink bg-cream px-2 py-1 font-display text-sm font-bold ${isActive ? 'shadow-sticker' : ''}`
-                }
-              >
-                {USE_NEW_TREE_DESIGN && (
-                  <span aria-hidden="true" className={`absolute inset-y-0 start-0 w-2 ${STRIPE_DARK[colorName]}`} />
-                )}
-                <bdi>{sub.name}</bdi>
-              </NavLink>
-            </li>
-          ))}
+          {subjects.map((sub) => {
+            const subStripe = sub.color ? (STRIPE_SUBJECT[sub.color] ?? STRIPE_DARK[colorName]) : STRIPE_DARK[colorName];
+            return (
+              <li key={sub.id}>
+                <NavLink
+                  to={r.subject(year.id, semester.id, sub.id)}
+                  className={({ isActive }) =>
+                    USE_NEW_TREE_DESIGN
+                      ? `block relative overflow-hidden rounded-md border-2 border-ink bg-smoke ps-4 pe-2 py-1 font-display text-sm font-bold text-ink ${isActive ? 'shadow-sticker' : ''}`
+                      : `block rounded-md border-2 border-ink bg-cream px-2 py-1 font-display text-sm font-bold ${isActive ? 'shadow-sticker' : ''}`
+                  }
+                >
+                  {USE_NEW_TREE_DESIGN && (
+                    <span aria-hidden="true" className={`absolute inset-y-0 start-0 w-2 ${subStripe}`} />
+                  )}
+                  <bdi>{sub.name}</bdi>
+                </NavLink>
+              </li>
+            );
+          })}
           {subjects.length === 0 && (
             <li className="px-2 text-xs text-ink/50">אין קורסים</li>
           )}
