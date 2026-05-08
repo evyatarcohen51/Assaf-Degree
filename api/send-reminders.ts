@@ -2,19 +2,19 @@
 // Triggered daily by Vercel Cron (see vercel.json). Also reachable manually
 // for testing: GET /api/send-reminders.
 //
+// Each user configures their own Gmail credentials in the Settings page;
+// reminders for that user are sent through their own Gmail SMTP account.
+//
 // Env vars required (set in Vercel + .env.local):
 //   SUPABASE_URL                    — same value as VITE_SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY       — admin key, NEVER expose to the browser
-//   RESEND_API_KEY                  — from https://resend.com/
-//   REMINDER_FROM                   — e.g. "Got Schooled <onboarding@resend.dev>"
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import nodemailer from 'nodemailer';
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const RESEND_API_KEY = process.env.RESEND_API_KEY!;
-const REMINDER_FROM = process.env.REMINDER_FROM ?? 'Got Schooled <onboarding@resend.dev>';
 
 interface DeadlineRow {
   id: string;
@@ -42,24 +42,23 @@ function fmtDateHe(iso: string): string {
   });
 }
 
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ from: REMINDER_FROM, to, subject, html }),
+async function sendEmail(
+  gmailUser: string,
+  gmailPass: string,
+  to: string,
+  subject: string,
+  html: string,
+): Promise<void> {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: gmailUser, pass: gmailPass },
   });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Resend API ${res.status}: ${body}`);
-  }
+  await transporter.sendMail({ from: gmailUser, to, subject, html });
 }
 
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
-  if (!SUPABASE_URL || !SERVICE_KEY || !RESEND_API_KEY) {
-    return res.status(500).json({ error: 'Missing env vars (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY)' });
+  if (!SUPABASE_URL || !SERVICE_KEY) {
+    return res.status(500).json({ error: 'Missing env vars (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)' });
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
@@ -85,12 +84,15 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     return res.status(200).json({ ok: true, sent: 0 });
   }
 
-  // 2. Fetch profile + subject names in batch
+  // 2. Fetch profile, settings (for Gmail creds), and subject names in batch
   const userIds = Array.from(new Set(due.map((d) => d.user_id)));
-  const { data: profiles } = await supabase
-    .from('profile')
-    .select('user_id, email, name')
-    .in('user_id', userIds);
+  const [{ data: profiles }, { data: userSettings }] = await Promise.all([
+    supabase.from('profile').select('user_id, email, name').in('user_id', userIds),
+    supabase
+      .from('settings')
+      .select('user_id, gmail_user, gmail_app_password')
+      .in('user_id', userIds),
+  ]);
   const subjectIds = Array.from(new Set(due.map((d) => d.subject_id)));
   const { data: subjects } = await supabase
     .from('subjects')
@@ -98,6 +100,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     .in('id', subjectIds);
 
   const profileByUser = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+  const settingsByUser = new Map((userSettings ?? []).map((s) => [s.user_id, s]));
   const subjectKey = (uid: string, sid: string) => `${uid}::${sid}`;
   const subjectByKey = new Map(
     (subjects ?? []).map((s) => [subjectKey(s.user_id, s.id), s]),
@@ -109,6 +112,11 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     const profile = profileByUser.get(d.user_id);
     if (!profile?.email) {
       results.push({ id: d.id, ok: false, error: 'no email on profile' });
+      continue;
+    }
+    const userGmail = settingsByUser.get(d.user_id);
+    if (!userGmail?.gmail_user || !userGmail?.gmail_app_password) {
+      results.push({ id: d.id, ok: false, error: 'no gmail configured' });
       continue;
     }
     const subj = subjectByKey.get(subjectKey(d.user_id, d.subject_id));
@@ -129,7 +137,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     `;
 
     try {
-      await sendEmail(profile.email, subject, html);
+      await sendEmail(userGmail.gmail_user, userGmail.gmail_app_password, profile.email, subject, html);
 
       let updateFields: Partial<DeadlineRow>;
       if (d.reminder_recurring_days != null) {

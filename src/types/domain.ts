@@ -7,6 +7,8 @@ export interface Settings {
   current_semester_id: string | null;
   bootstrapped: boolean;
   must_change_password: boolean;
+  gmail_user: string | null;
+  gmail_app_password: string | null;
   updated_at: string;
 }
 

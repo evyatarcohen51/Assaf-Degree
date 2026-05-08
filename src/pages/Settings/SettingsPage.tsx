@@ -8,6 +8,7 @@ import { r } from '../../lib/routes';
 import { YearsManager } from './YearsManager';
 import { SubjectsSection } from './SubjectsSection';
 import { WeeklyScheduleSection } from './WeeklyScheduleSection';
+import { GmailSection } from './GmailSection';
 
 export function SettingsPage() {
   const { user } = useAuth();
@@ -150,6 +151,8 @@ export function SettingsPage() {
           <WeeklyScheduleSection semesterId={activeSemester.id} />
         </>
       )}
+
+      <GmailSection />
 
       <div className="flex flex-wrap gap-3 justify-between items-center">
         <button type="button" className="btn" onClick={handleSave} disabled={busy}>

@@ -13,6 +13,7 @@
     "@hebcal/core": "^6.4.1",
     "@supabase/supabase-js": "^2.105.3",
     "nanoid": "^5.0.9",
+    "nodemailer": "^8.0.7",
     "react": "^18.3.1",
     "react-day-picker": "^9.4.4",
     "react-dom": "^18.3.1",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vercel/node": "^5.7.15",
