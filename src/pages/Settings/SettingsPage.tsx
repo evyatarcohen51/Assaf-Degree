@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
@@ -19,6 +19,9 @@ export function SettingsPage() {
   const [institutionName, setInstitutionName] = useState('');
   const [busy, setBusy] = useState(false);
   const [activeSemesterId, setActiveSemesterId] = useState<string>('');
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetConfirmed, setResetConfirmed] = useState(false);
+  const checkboxRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (settings) setInstitutionName(settings.institution_name);
@@ -69,7 +72,6 @@ export function SettingsPage() {
 
   async function handleResetData() {
     if (!user) return;
-    if (!confirm('למחוק את כל הנתונים? לא ניתן לשחזר.')) return;
     await supabase.from('years').delete().eq('user_id', user.id);
     await supabase
       .from('settings')
@@ -81,6 +83,16 @@ export function SettingsPage() {
       })
       .eq('user_id', user.id);
     location.reload();
+  }
+
+  function openResetModal() {
+    setResetConfirmed(false);
+    setShowResetModal(true);
+  }
+
+  function closeResetModal() {
+    setShowResetModal(false);
+    setResetConfirmed(false);
   }
 
   const isFirstRun = !settings?.bootstrapped;
@@ -139,16 +151,58 @@ export function SettingsPage() {
         </>
       )}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 justify-between items-center">
         <button type="button" className="btn" onClick={handleSave} disabled={busy}>
           {busy ? '...' : 'שמור והמשך'}
         </button>
         {!isFirstRun && (
-          <button type="button" className="btn-secondary" onClick={handleResetData}>
+          <button
+            type="button"
+            className="btn-danger"
+            onClick={openResetModal}
+          >
             אפס הכל
           </button>
         )}
       </div>
+
+      {showResetModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40"
+          onClick={(e) => { if (e.target === e.currentTarget) closeResetModal(); }}
+        >
+          <div className="bg-paper rounded-2xl border-2 border-ink shadow-xl p-6 max-w-sm w-full mx-4 flex flex-col gap-4">
+            <h3 className="text-xl font-bold text-red-600">אפס את כל הנתונים</h3>
+            <p className="text-sm text-ink/80">
+              פעולה זו תמחק את כל השנים, הסמסטרים, הקורסים, השיעורים וכל שאר הנתונים.
+              <strong className="block mt-1">לא ניתן לשחזר.</strong>
+            </p>
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input
+                ref={checkboxRef}
+                type="checkbox"
+                className="mt-0.5 w-4 h-4 accent-red-600 cursor-pointer"
+                checked={resetConfirmed}
+                onChange={(e) => setResetConfirmed(e.target.checked)}
+              />
+              <span className="text-sm">אני בטוח/ה שאני מוחק/ת את כל הנתונים לתמיד</span>
+            </label>
+            <div className="flex gap-3 justify-end">
+              <button type="button" className="btn-secondary" onClick={closeResetModal}>
+                ביטול
+              </button>
+              <button
+                type="button"
+                className="btn-danger-filled"
+                disabled={!resetConfirmed}
+                onClick={() => { closeResetModal(); handleResetData(); }}
+              >
+                אשר מחיקה
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

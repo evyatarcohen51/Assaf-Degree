@@ -64,6 +64,15 @@ html.dark {
     @apply inline-flex items-center justify-center rounded-full border-2 border-ink bg-cream px-5 py-2 font-display font-bold uppercase text-ink cursor-pointer select-none;
   }
   .btn-secondary:hover { @apply bg-ink text-cream; }
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-full border-2 border-red bg-cream px-5 py-2 font-display font-bold uppercase text-red cursor-pointer select-none;
+  }
+  .btn-danger:hover { @apply bg-red text-cream; }
+  .btn-danger-filled {
+    @apply inline-flex items-center justify-center rounded-full border-2 border-red bg-red px-5 py-2 font-display font-bold uppercase text-cream cursor-pointer select-none;
+  }
+  .btn-danger-filled:hover { @apply opacity-90; }
+  .btn-danger-filled:disabled { @apply opacity-40 cursor-not-allowed; }
 
   /* Field — input/textarea/select with thick border */
   .field {
