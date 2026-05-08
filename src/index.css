@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Neutral palette — dark mode flips these variables; accent colors stay fixed */
+:root {
+  --c-ink:   42 42 42;        /* #2A2A2A */
+  --c-cream: 255 246 234;     /* #FFF6EA */
+  --c-dot:   240 234 223;     /* #F0EADF */
+  --c-paper: 240 234 223;     /* #F0EADF */
+  --c-smoke: 232 229 224;     /* #E8E5E0 */
+  --shadow-ink: #2A2A2A;
+}
+html.dark {
+  --c-ink:   220 215 205;     /* warm light gray */
+  --c-cream: 18 17 15;        /* very dark warm */
+  --c-dot:   28 26 23;        /* dot grid on dark bg */
+  --c-paper: 22 21 18;        /* sidebar background */
+  --c-smoke: 40 37 32;        /* card surface */
+  --shadow-ink: #000000;
+}
+
 @layer base {
   html, body, #root { height: 100%; }
   body {

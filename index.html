@@ -6,6 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#2A2A2A" />
     <title>Got Schooled</title>
+    <!-- Apply dark class before React renders to avoid flash -->
+    <script>
+      try {
+        var d = localStorage.getItem('dark-mode');
+        if (d === 'true' || (d === null && matchMedia('(prefers-color-scheme: dark)').matches))
+          document.documentElement.classList.add('dark');
+      } catch(e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

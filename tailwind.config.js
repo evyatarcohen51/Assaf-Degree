@@ -1,15 +1,16 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Got Schooled palette — inspired by allthingswtf.com
-        ink: '#2A2A2A',           // primary text + borders
-        cream: '#FFF6EA',         // page background (under dot pattern)
-        dot: '#F0EADF',           // dot color in page background
-        paper: '#F0EADF',         // secondary surface (legacy alias for dot)
-        smoke: '#E8E5E0',         // card / box surface — light gray
+        // Got Schooled palette — neutral colors use CSS variables so dark mode flips them automatically
+        ink:   'rgb(var(--c-ink)   / <alpha-value>)',
+        cream: 'rgb(var(--c-cream) / <alpha-value>)',
+        dot:   'rgb(var(--c-dot)   / <alpha-value>)',
+        paper: 'rgb(var(--c-paper) / <alpha-value>)',
+        smoke: 'rgb(var(--c-smoke) / <alpha-value>)',
         red: '#C53B3A',
         green: '#0C9367',
         orange: '#F07633',
@@ -31,8 +32,8 @@ export default {
         'glow-red': '0 0 12px 2px rgba(197, 59, 58, 0.7)',
         'glow-yellow': '0 0 12px 2px rgba(241, 179, 51, 0.7)',
         'glow-green': '0 0 12px 2px rgba(12, 147, 103, 0.7)',
-        sticker: '4px 4px 0 0 #2A2A2A',
-        'sticker-lg': '6px 6px 0 0 #2A2A2A',
+        sticker: '4px 4px 0 0 var(--shadow-ink)',
+        'sticker-lg': '6px 6px 0 0 var(--shadow-ink)',
       },
       rotate: {
         sticker: '11.91deg',

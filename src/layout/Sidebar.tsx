@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { SidebarTree } from './SidebarTree';
 import { r } from '../lib/routes';
 import { signOut, useAuth } from '../lib/auth';
+import { useDarkMode } from '../lib/useDarkMode';
 
 // Toggle: true = straight nav buttons (new), false = sticker rotation (classic).
 const USE_STRAIGHT_NAV_ITEMS = true;
@@ -10,6 +11,7 @@ const navRotate = (cls: string): string | undefined =>
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
+  const [dark, setDark] = useDarkMode();
 
   return (
     <nav className="flex h-full flex-col gap-1 overflow-y-auto pb-6" onClick={onNavigate}>
@@ -26,6 +28,16 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem to={r.credits()} label="נקודות זכות" colorClass="bg-yellow" rotate={navRotate('-rotate-sticker')} />
         <NavItem to={r.profile()} label="פרופיל" colorClass="bg-yellow" rotate={navRotate('rotate-sticker')} />
         <NavItem to={r.settings()} label="הגדרות" colorClass="bg-yellow" rotate={navRotate('-rotate-sticker')} />
+      </div>
+
+      <div className="mt-4">
+        <button
+          type="button"
+          className="btn-secondary w-full text-sm"
+          onClick={() => setDark(!dark)}
+        >
+          {dark ? '☀ מצב בהיר' : '🌙 מצב כהה'}
+        </button>
       </div>
 
       {user && (
