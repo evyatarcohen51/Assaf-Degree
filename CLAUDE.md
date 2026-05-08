@@ -73,6 +73,7 @@ Files go to the `user-files` Storage bucket at path `<user_id>/<file_id>`. RLS e
 - Routes are constructed via the `r` helpers in [src/lib/routes.ts](src/lib/routes.ts) — don't hand-build `/year/.../semester/...` paths in components.
 - All reads/writes go through `supabase` from [src/lib/supabase.ts](src/lib/supabase.ts). Always filter by `user_id` even though RLS already enforces it (defense in depth + correct cache keys for `useTable`).
 - The "current" semester is computed from date ranges by [`getCurrentSemester`](src/lib/progress.ts) — prefer that over reading `settings.current_semester_id` directly when displaying "what's happening now".
+- **Design-toggle pattern**: when redesigning a UI region, both variants live in the same file gated by a top-of-file boolean constant (e.g. `USE_NEW_TREE_DESIGN` in [src/layout/SidebarTree.tsx](src/layout/SidebarTree.tsx), `USE_STRAIGHT_NAV_ITEMS` in [src/layout/Sidebar.tsx](src/layout/Sidebar.tsx)). Flipping the constant reverts the design with no other edits — keep this pattern when iterating on visuals.
 
 ## Env vars
 

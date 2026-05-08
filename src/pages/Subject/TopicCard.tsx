@@ -4,13 +4,14 @@ import { deleteTopic } from '../../hooks/useTopics';
 import { r } from '../../lib/routes';
 import type { Topic, TopicColor } from '../../types/domain';
 
-const COLOR_BG: Record<TopicColor, string> = {
-  yellow: 'bg-yellow',
-  orange: 'bg-orange',
-  red: 'bg-red',
-  purple: 'bg-purple',
-  blue: 'bg-blue',
-  green: 'bg-green',
+// `text-{color}` drives `fill="currentColor"` on the SVG path.
+const COLOR_FILL: Record<TopicColor, string> = {
+  yellow: 'text-yellow',
+  orange: 'text-orange',
+  red: 'text-red',
+  purple: 'text-purple',
+  blue: 'text-blue',
+  green: 'text-green',
 };
 
 const TEXT_ON_COLOR: Record<TopicColor, string> = {
@@ -50,28 +51,36 @@ export function TopicCard({
   return (
     <Link
       to={r.topic(yearId, semId, subjectId, topic.id)}
-      className="block aspect-square"
+      className="relative block aspect-square"
+      style={{ filter: 'drop-shadow(2px 4px 8px rgba(0,0,0,0.22))' }}
     >
-      <div className="flex h-full flex-col">
-        {/* Folder tab — top-start (right in RTL), narrower than body */}
-        <div
-          className={`h-[16%] w-2/5 self-start rounded-t-xl border-2 border-b-0 border-ink ${COLOR_BG[topic.color]}`}
+      {/* Folder silhouette — viewBox 100×100, tab on the start side (right in RTL) */}
+      <svg
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        className={`absolute inset-0 h-full w-full ${COLOR_FILL[topic.color]}`}
+      >
+        <path
+          d="M 10 14 Q 0 14 0 22 V 90 Q 0 100 10 100 H 90 Q 100 100 100 90 V 10 Q 100 0 90 0 H 62 Q 52 0 52 14 Z"
+          fill="currentColor"
         />
-        {/* Folder body */}
-        <div
-          className={`relative -mt-px flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl rounded-ts-none border-2 border-ink ${COLOR_BG[topic.color]} ${TEXT_ON_COLOR[topic.color]} p-4 shadow-sticker font-display font-black text-xl text-center`}
-        >
-          <bdi className="break-words">{topic.name}</bdi>
-          <button
-            type="button"
-            onClick={handleDelete}
-            aria-label="מחק נושא"
-            className="absolute top-2 left-2 h-6 w-6 rounded-full border-2 border-ink bg-cream text-ink text-xs font-bold leading-none flex items-center justify-center"
-          >
-            ×
-          </button>
-        </div>
+      </svg>
+      {/* Text content — pushed down past the tab area */}
+      <div
+        className={`absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 pb-2 pt-[20%] ${TEXT_ON_COLOR[topic.color]} font-display font-black text-xs text-center`}
+      >
+        <bdi className="break-words">{topic.name}</bdi>
       </div>
+      {/* Delete button — top-end corner of the body (visual left in RTL) */}
+      <button
+        type="button"
+        onClick={handleDelete}
+        aria-label="מחק נושא"
+        className="absolute top-[18%] end-1 h-4 w-4 rounded-full bg-black/20 text-white text-[10px] font-bold leading-none flex items-center justify-center hover:bg-black/40"
+      >
+        ×
+      </button>
     </Link>
   );
 }

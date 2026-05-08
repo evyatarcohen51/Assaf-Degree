@@ -18,7 +18,7 @@ export function TopicGrid({
   return (
     <section className="card">
       <h2 className="text-xl mb-3">נושאים</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
         {topics.map((t) => (
           <TopicCard
             key={t.id}
@@ -31,10 +31,10 @@ export function TopicGrid({
         <button
           type="button"
           onClick={() => setShowAdd(true)}
-          className="aspect-square flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-ink bg-cream p-4 font-display font-black text-xl text-ink/60 hover:bg-paper"
+          className="aspect-square flex flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-ink bg-cream p-2 font-display font-black text-ink/60 hover:bg-paper"
         >
-          <span className="text-4xl leading-none">＋</span>
-          <span className="text-sm">הוסף נושא</span>
+          <span className="text-2xl leading-none">＋</span>
+          <span className="text-xs">הוסף</span>
         </button>
       </div>
       {showAdd && (
