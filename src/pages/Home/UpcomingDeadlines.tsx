@@ -123,14 +123,17 @@ function EditDeadlineModal({ deadline, subjects, onClose, onSave }: EditModalPro
 
   async function handleSave() {
     if (!title.trim() || !date) return;
+    const newReminderAt = showReminder && reminderAt ? new Date(reminderAt).toISOString() : null;
+    // If the reminder time changed, reset reminder_sent_at so the cron will fire again.
+    const sameTime = newReminderAt === deadline.reminder_email_at;
     await onSave({
       title: title.trim(),
       date,
       subject_id: subjectId === OTHER_SUBJECT ? null : subjectId,
       kind,
-      reminder_email_at: showReminder && reminderAt ? new Date(reminderAt).toISOString() : null,
+      reminder_email_at: newReminderAt,
       reminder_recurring_days: showReminder && recurring ? Number(recurring) : null,
-      reminder_sent_at: showReminder ? deadline.reminder_sent_at : null,
+      reminder_sent_at: showReminder && sameTime ? deadline.reminder_sent_at : null,
     });
     onClose();
   }
