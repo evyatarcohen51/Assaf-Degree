@@ -5,6 +5,7 @@ import { useTable } from '../../lib/useRealtime';
 import { useTopic } from '../../hooks/useTopics';
 import { FileDropzone } from './FileDropzone';
 import { FileList } from './FileList';
+import { CloudPickerButton } from './CloudPickerButton';
 import { r } from '../../lib/routes';
 import type { Subject, TopicColor } from '../../types/domain';
 
@@ -73,6 +74,7 @@ export function TopicPage() {
       <section className="card">
         <h2 className="text-xl mb-3">העלאת קבצים</h2>
         <FileDropzone subjectId={subjectId} topicId={topicId} />
+        <CloudPickerButton subjectId={subjectId} topicId={topicId} />
       </section>
 
       <section className="card">
