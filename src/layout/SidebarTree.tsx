@@ -105,7 +105,10 @@ function YearNode({ year, colorName }: { year: Year; colorName: YearColor }) {
         </button>
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((v) => !v);
+          }}
           className={yearChevronClass()}
           aria-label={open ? 'סגור' : 'פתח'}
         >
@@ -160,7 +163,10 @@ function SemesterNode({
         </button>
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((v) => !v);
+          }}
           className={
             USE_NEW_TREE_DESIGN
               ? 'rounded-lg border-2 border-ink bg-smoke px-2 py-1 font-display font-bold text-ink'
