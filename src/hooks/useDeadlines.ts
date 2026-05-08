@@ -9,12 +9,12 @@ export function useUpcomingDeadlines(limit = 8): Deadline[] {
     'deadlines',
     async () => {
       if (!user) return [];
-      const today = new Date().toISOString().slice(0, 10);
+      const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
       const { data, error } = await supabase
         .from('deadlines')
         .select('*')
         .eq('user_id', user.id)
-        .gte('date', today)
+        .gte('date', yesterday)
         .order('date', { ascending: true })
         .limit(limit);
       if (error) throw error;

@@ -32,6 +32,7 @@ export default {
         'glow-red': '0 0 12px 2px rgba(197, 59, 58, 0.7)',
         'glow-yellow': '0 0 12px 2px rgba(241, 179, 51, 0.7)',
         'glow-green': '0 0 12px 2px rgba(12, 147, 103, 0.7)',
+        'glow-orange': '0 0 12px 2px rgba(240, 118, 51, 0.7)',
         sticker: '4px 4px 0 0 var(--shadow-ink)',
         'sticker-lg': '6px 6px 0 0 var(--shadow-ink)',
       },

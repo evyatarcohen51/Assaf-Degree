@@ -5,7 +5,7 @@ import { useUpcomingDeadlines } from '../../hooks/useDeadlines';
 import { useAllSubjects } from '../../hooks/useTreeData';
 import { newId } from '../../lib/ids';
 import { formatDateHe } from '../../lib/progress';
-import type { DeadlineKind } from '../../types/domain';
+import type { Deadline, DeadlineKind } from '../../types/domain';
 
 const KIND_LABEL: Record<DeadlineKind, string> = {
   exam: 'מבחן',
@@ -21,20 +21,231 @@ const RECURRING_LABEL: Record<RecurringPreset, string> = {
   '30': 'כל חודש',
 };
 
+const OTHER_SUBJECT = '__other__';
+
+function daysUntil(dateStr: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const deadline = new Date(dateStr + 'T00:00:00');
+  return Math.round((deadline.getTime() - today.getTime()) / 864e5);
+}
+
+function dateBadgeClass(days: number): string {
+  if (days < 0)
+    return 'rounded-full border-2 border-ink/30 bg-ink/10 px-3 py-1 font-display font-bold text-ink/40';
+  if (days <= 1)
+    return 'rounded-full border-2 border-red bg-red px-3 py-1 font-display font-bold text-cream shadow-glow-red';
+  if (days <= 7)
+    return 'rounded-full border-2 border-orange bg-orange px-3 py-1 font-display font-bold text-cream shadow-glow-orange';
+  return 'rounded-full border-2 border-green bg-green px-3 py-1 font-display font-bold text-cream shadow-glow-green';
+}
+
+function toDatetimeLocal(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// ── Reminder modal (used both for new-deadline reminder and edit) ──────────────
+interface ReminderModalProps {
+  reminderAt: string;
+  setReminderAt: (v: string) => void;
+  recurring: RecurringPreset;
+  setRecurring: (v: RecurringPreset) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+function ReminderModal({ reminderAt, setReminderAt, recurring, setRecurring, onClose, onConfirm }: ReminderModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-sm rounded-2xl border-2 border-ink bg-cream p-5 flex flex-col gap-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="font-bold text-lg">תזכורת במייל</h2>
+        <label className="flex flex-col gap-1">
+          <span className="text-sm">שלח תזכורת ב-</span>
+          <input
+            type="datetime-local"
+            className="field"
+            value={reminderAt}
+            onChange={(e) => setReminderAt(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-sm">חזרה</span>
+          <select
+            className="field"
+            value={recurring}
+            onChange={(e) => setRecurring(e.target.value as RecurringPreset)}
+          >
+            {(Object.keys(RECURRING_LABEL) as RecurringPreset[]).map((k) => (
+              <option key={k} value={k}>
+                {RECURRING_LABEL[k]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="flex gap-2 justify-start">
+          <button type="button" className="btn" onClick={onConfirm}>
+            אישור
+          </button>
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            ביטול
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Edit deadline modal ────────────────────────────────────────────────────────
+interface EditModalProps {
+  deadline: Deadline;
+  subjects: ReturnType<typeof useAllSubjects>;
+  onClose: () => void;
+  onSave: (updates: Partial<Omit<Deadline, 'id' | 'user_id'>>) => Promise<void>;
+}
+
+function EditDeadlineModal({ deadline, subjects, onClose, onSave }: EditModalProps) {
+  const [title, setTitle] = useState(deadline.title);
+  const [date, setDate] = useState(deadline.date);
+  const [subjectId, setSubjectId] = useState(deadline.subject_id ?? OTHER_SUBJECT);
+  const [kind, setKind] = useState<DeadlineKind>(deadline.kind);
+  const [showReminder, setShowReminder] = useState(!!deadline.reminder_email_at);
+  const [reminderAt, setReminderAt] = useState(
+    deadline.reminder_email_at ? toDatetimeLocal(deadline.reminder_email_at) : '',
+  );
+  const [recurring, setRecurring] = useState<RecurringPreset>(
+    String(deadline.reminder_recurring_days ?? '') as RecurringPreset,
+  );
+
+  async function handleSave() {
+    if (!title.trim() || !date) return;
+    await onSave({
+      title: title.trim(),
+      date,
+      subject_id: subjectId === OTHER_SUBJECT ? null : subjectId,
+      kind,
+      reminder_email_at: showReminder && reminderAt ? new Date(reminderAt).toISOString() : null,
+      reminder_recurring_days: showReminder && recurring ? Number(recurring) : null,
+      reminder_sent_at: showReminder ? deadline.reminder_sent_at : null,
+    });
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-2xl border-2 border-ink bg-cream p-5 flex flex-col gap-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="font-bold text-lg">ערוך מועד</h2>
+
+        <div className="flex flex-col gap-2">
+          <input
+            className="field"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="כותרת"
+            dir="auto"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <select className="field" value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
+              <option value="">— קורס —</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+              <option value={OTHER_SUBJECT}>אחר</option>
+            </select>
+            <select className="field" value={kind} onChange={(e) => setKind(e.target.value as DeadlineKind)}>
+              <option value="exam">מבחן</option>
+              <option value="assignment">מטלה</option>
+              <option value="other">אחר</option>
+            </select>
+          </div>
+          <input
+            type="date"
+            className="field"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+
+        <div className="border-t border-ink/20 pt-3 flex flex-col gap-2">
+          <button
+            type="button"
+            className="text-sm underline text-ink/70 text-start"
+            onClick={() => setShowReminder((v) => !v)}
+          >
+            {showReminder ? 'הסר תזכורת במייל' : 'הוסף תזכורת במייל'}
+          </button>
+          {showReminder && (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-sm">שלח ב-</span>
+                <input
+                  type="datetime-local"
+                  className="field"
+                  value={reminderAt}
+                  onChange={(e) => setReminderAt(e.target.value)}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm">חזרה</span>
+                <select
+                  className="field"
+                  value={recurring}
+                  onChange={(e) => setRecurring(e.target.value as RecurringPreset)}
+                >
+                  {(Object.keys(RECURRING_LABEL) as RecurringPreset[]).map((k) => (
+                    <option key={k} value={k}>
+                      {RECURRING_LABEL[k]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 justify-start">
+          <button type="button" className="btn" onClick={handleSave}>
+            שמור
+          </button>
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            ביטול
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
 export function UpcomingDeadlines() {
   const { user } = useAuth();
   const deadlines = useUpcomingDeadlines();
   const subjects = useAllSubjects();
-  const subjectName = (id: string | null) => id ? (subjects.find((s) => s.id === id)?.name ?? '—') : 'אחר';
+  const subjectName = (id: string | null) =>
+    id ? (subjects.find((s) => s.id === id)?.name ?? '—') : 'אחר';
 
+  // new deadline form
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [subjectId, setSubjectId] = useState('');
-  const OTHER_SUBJECT = '__other__';
   const [kind, setKind] = useState<DeadlineKind>('exam');
-  const [showReminder, setShowReminder] = useState(false);
-  const [reminderAt, setReminderAt] = useState('');
-  const [recurring, setRecurring] = useState<RecurringPreset>('');
+
+  // pending reminder for the new deadline (set via modal, applied on add)
+  const [pendingReminderAt, setPendingReminderAt] = useState('');
+  const [pendingRecurring, setPendingRecurring] = useState<RecurringPreset>('');
+  const [showNewReminderModal, setShowNewReminderModal] = useState(false);
+
+  // edit modal
+  const [editingDeadline, setEditingDeadline] = useState<Deadline | null>(null);
 
   async function handleAdd() {
     if (!user) return;
@@ -46,15 +257,14 @@ export function UpcomingDeadlines() {
       title: title.trim(),
       date,
       kind,
-      reminder_email_at: showReminder && reminderAt ? new Date(reminderAt).toISOString() : null,
-      reminder_recurring_days: showReminder && recurring ? Number(recurring) : null,
+      reminder_email_at: pendingReminderAt ? new Date(pendingReminderAt).toISOString() : null,
+      reminder_recurring_days: pendingReminderAt && pendingRecurring ? Number(pendingRecurring) : null,
       reminder_sent_at: null,
     });
     setTitle('');
     setDate('');
-    setReminderAt('');
-    setRecurring('');
-    setShowReminder(false);
+    setPendingReminderAt('');
+    setPendingRecurring('');
   }
 
   async function handleRemove(id: string) {
@@ -62,18 +272,12 @@ export function UpcomingDeadlines() {
     await supabase.from('deadlines').delete().eq('user_id', user.id).eq('id', id);
   }
 
-  async function handleClearReminder(id: string) {
+  async function handleSaveEdit(id: string, updates: Partial<Omit<Deadline, 'id' | 'user_id'>>) {
     if (!user) return;
-    await supabase
-      .from('deadlines')
-      .update({
-        reminder_email_at: null,
-        reminder_recurring_days: null,
-        reminder_sent_at: null,
-      })
-      .eq('user_id', user.id)
-      .eq('id', id);
+    await supabase.from('deadlines').update(updates).eq('user_id', user.id).eq('id', id);
   }
+
+  const hasReminder = pendingReminderAt !== '';
 
   return (
     <div className="flex flex-col gap-3">
@@ -124,39 +328,11 @@ export function UpcomingDeadlines() {
             <button
               type="button"
               className="text-sm underline text-ink/70"
-              onClick={() => setShowReminder((v) => !v)}
+              onClick={() => setShowNewReminderModal(true)}
             >
-              {showReminder ? 'הסר תזכורת במייל' : 'הוסף תזכורת במייל'}
+              {hasReminder ? '✓ תזכורת במייל מוגדרת' : 'הוסף תזכורת במייל'}
             </button>
           </div>
-
-          {showReminder && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-xl border-2 border-ink bg-paper p-3">
-              <label className="block">
-                <span className="block text-sm mb-1">שלח תזכורת ב-</span>
-                <input
-                  type="datetime-local"
-                  className="field"
-                  value={reminderAt}
-                  onChange={(e) => setReminderAt(e.target.value)}
-                />
-              </label>
-              <label className="block">
-                <span className="block text-sm mb-1">חזרה</span>
-                <select
-                  className="field"
-                  value={recurring}
-                  onChange={(e) => setRecurring(e.target.value as RecurringPreset)}
-                >
-                  {(Object.keys(RECURRING_LABEL) as RecurringPreset[]).map((k) => (
-                    <option key={k} value={k}>
-                      {RECURRING_LABEL[k]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          )}
         </div>
       )}
 
@@ -174,27 +350,28 @@ export function UpcomingDeadlines() {
               <div className="text-xs text-ink/60">
                 <bdi>{subjectName(d.subject_id)}</bdi>
                 {d.reminder_email_at && (
-                  <span className="ms-2 inline-flex items-center gap-1">
-                    <span>
-                      📧 {d.reminder_recurring_days ? `כל ${d.reminder_recurring_days} ימים` : 'תזכורת'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleClearReminder(d.id)}
-                      aria-label="הסר תזכורת"
-                      title="הסר תזכורת"
-                      className="inline-flex items-center justify-center h-4 w-4 rounded-full border border-ink/40 text-ink/60 hover:bg-red hover:text-cream hover:border-red text-[10px] leading-none"
-                    >
-                      ×
-                    </button>
+                  <span className="ms-2">
+                    📧{d.reminder_recurring_days ? ` כל ${d.reminder_recurring_days} ימים` : ' תזכורת'}
                   </span>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="rounded-full border-2 border-red bg-red px-3 py-1 font-display font-bold text-cream shadow-glow-red">
-                {formatDateHe(d.date)}
-              </span>
+              <div className="flex flex-col items-center gap-0.5">
+                <span className={dateBadgeClass(daysUntil(d.date))}>
+                  {formatDateHe(d.date)}
+                </span>
+                {daysUntil(d.date) < 0 && (
+                  <span className="text-[10px] text-ink/40 font-bold">עבר</span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn-secondary !px-3 !py-1 text-sm"
+                onClick={() => setEditingDeadline(d)}
+              >
+                ערוך
+              </button>
               <button
                 type="button"
                 className="btn-secondary !px-3 !py-1 text-sm"
@@ -209,6 +386,26 @@ export function UpcomingDeadlines() {
           <li className="text-sm text-ink/50">אין מועדים קרובים</li>
         )}
       </ul>
+
+      {showNewReminderModal && (
+        <ReminderModal
+          reminderAt={pendingReminderAt}
+          setReminderAt={setPendingReminderAt}
+          recurring={pendingRecurring}
+          setRecurring={setPendingRecurring}
+          onClose={() => setShowNewReminderModal(false)}
+          onConfirm={() => setShowNewReminderModal(false)}
+        />
+      )}
+
+      {editingDeadline && (
+        <EditDeadlineModal
+          deadline={editingDeadline}
+          subjects={subjects}
+          onClose={() => setEditingDeadline(null)}
+          onSave={(updates) => handleSaveEdit(editingDeadline.id, updates)}
+        />
+      )}
     </div>
   );
 }
