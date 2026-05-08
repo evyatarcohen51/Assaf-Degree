@@ -127,7 +127,7 @@ export type DeadlineKind = 'exam' | 'assignment' | 'other';
 export interface Deadline {
   id: Id;
   user_id: string;
-  subject_id: Id;
+  subject_id: Id | null;
   title: string;
   date: string;
   kind: DeadlineKind;

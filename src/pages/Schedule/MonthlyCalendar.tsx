@@ -174,7 +174,7 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
     return map;
   }, [deadlines]);
 
-  const subjectOf = (id: string) => subjects.find(s => s.id === id);
+  const subjectOf = (id: string | null) => id ? subjects.find(s => s.id === id) : undefined;
   const dayDeadlines = deadlines.filter(d => sameDay(parseDateLocal(d.date), selected));
   const selectedKey = dateKey(selected);
   const selectedHolidays = holidays.get(selectedKey) ?? [];

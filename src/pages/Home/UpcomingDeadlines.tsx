@@ -25,11 +25,12 @@ export function UpcomingDeadlines() {
   const { user } = useAuth();
   const deadlines = useUpcomingDeadlines();
   const subjects = useAllSubjects();
-  const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name ?? '—';
+  const subjectName = (id: string | null) => id ? (subjects.find((s) => s.id === id)?.name ?? '—') : 'אחר';
 
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [subjectId, setSubjectId] = useState('');
+  const OTHER_SUBJECT = '__other__';
   const [kind, setKind] = useState<DeadlineKind>('exam');
   const [showReminder, setShowReminder] = useState(false);
   const [reminderAt, setReminderAt] = useState('');
@@ -41,7 +42,7 @@ export function UpcomingDeadlines() {
     await supabase.from('deadlines').insert({
       id: newId(),
       user_id: user.id,
-      subject_id: subjectId,
+      subject_id: subjectId === OTHER_SUBJECT ? null : subjectId,
       title: title.trim(),
       date,
       kind,
@@ -97,6 +98,7 @@ export function UpcomingDeadlines() {
                   {s.name}
                 </option>
               ))}
+              <option value={OTHER_SUBJECT}>אחר</option>
             </select>
             <select
               className="field"
