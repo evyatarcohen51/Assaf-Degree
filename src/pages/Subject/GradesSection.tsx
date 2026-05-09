@@ -8,6 +8,8 @@ import {
   computeFinalGrade,
   totalWeight,
 } from '../../hooks/useGrades';
+import { USE_SOFT_DESIGN } from '../../lib/design';
+import { PencilIcon, TrashIcon } from '../../ui/icons';
 import type { Grade, GradeKind } from '../../types/domain';
 
 const KIND_LABEL: Record<GradeKind, string> = {
@@ -82,6 +84,109 @@ export function GradesSection({ subjectId }: { subjectId: string }) {
     }
   }
 
+  if (USE_SOFT_DESIGN) {
+    return (
+      <section className="card-soft">
+        <h2 className="flex items-center gap-2 text-xl font-bold text-soft-text mb-5">
+          <span>ציונים</span>
+          <span className="text-soft-muted"><PencilIcon size={20} /></span>
+        </h2>
+
+        <div className="grid grid-cols-2 md:grid-cols-[1fr_auto_auto_auto_auto] gap-2 mb-4 items-stretch">
+          <input
+            className="field-soft"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAdd();
+            }}
+            placeholder="שם (למשל: מבחן אמצע)"
+            dir="auto"
+          />
+          <select
+            className="field-soft"
+            value={kind}
+            onChange={(e) => setKind(e.target.value as GradeKind)}
+          >
+            <option value="exam">מבחן</option>
+            <option value="assignment">מטלה</option>
+            <option value="project">פרויקט</option>
+            <option value="other">אחר</option>
+          </select>
+          <input
+            className="field-soft w-24"
+            type="number"
+            step="0.5"
+            min="0"
+            max="100"
+            value={grade}
+            onChange={(e) => setGrade(e.target.value)}
+            placeholder="ציון"
+          />
+          <input
+            className="field-soft w-24"
+            type="number"
+            step="1"
+            min="0"
+            max="100"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            placeholder="משקל %"
+          />
+          <button type="button" className="btn-soft-primary" onClick={handleAdd}>
+            הוסף
+          </button>
+        </div>
+
+        {grades.length === 0 ? (
+          <p className="text-sm text-soft-muted">אין ציונים עדיין</p>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="border-b border-soft-border py-3 ps-3 text-start text-soft-muted text-sm font-medium">שם</th>
+                    <th className="border-b border-soft-border py-3 text-start text-soft-muted text-sm font-medium">סוג</th>
+                    <th className="border-b border-soft-border py-3 text-start text-soft-muted text-sm font-medium">ציון</th>
+                    <th className="border-b border-soft-border py-3 text-start text-soft-muted text-sm font-medium">משקל</th>
+                    <th className="border-b border-soft-border py-3 pe-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grades.map((g) => (
+                    <GradeRow
+                      key={g.id}
+                      g={g}
+                      soft
+                      onUpdate={(fields) => handleUpdate(g, fields)}
+                      onRemove={() => handleRemove(g.id)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-3 items-center justify-between row-soft">
+              <div className="font-display font-bold text-lg text-soft-text">
+                ציון משוקלל:{' '}
+                <span className="text-2xl">
+                  {final !== null ? final.toFixed(2) : '—'}
+                </span>
+              </div>
+              <div
+                className={`text-sm ${sumWeight === 100 ? 'text-green' : 'text-red font-bold'}`}
+              >
+                סך משקלים: {sumWeight.toFixed(0)}%
+                {sumWeight !== 100 && ' (אמור להיות 100%)'}
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+    );
+  }
+
   return (
     <section className="card">
       <h2 className="text-xl mb-3">ציונים</h2>
@@ -152,6 +257,7 @@ export function GradesSection({ subjectId }: { subjectId: string }) {
                   <GradeRow
                     key={g.id}
                     g={g}
+                    soft={false}
                     onUpdate={(fields) => handleUpdate(g, fields)}
                     onRemove={() => handleRemove(g.id)}
                   />
@@ -182,10 +288,12 @@ export function GradesSection({ subjectId }: { subjectId: string }) {
 
 function GradeRow({
   g,
+  soft,
   onUpdate,
   onRemove,
 }: {
   g: Grade;
+  soft: boolean;
   onUpdate: (
     fields: Partial<Pick<Grade, 'name' | 'kind' | 'grade' | 'weight_percent'>>,
   ) => void;
@@ -194,6 +302,75 @@ function GradeRow({
   const [name, setName] = useState(g.name);
   const [grade, setGrade] = useState(String(g.grade));
   const [weight, setWeight] = useState(String(g.weight_percent));
+
+  if (soft) {
+    return (
+      <tr className="align-middle">
+        <td className="border-b border-soft-border py-3 ps-3">
+          <input
+            className="w-full bg-transparent border-b border-transparent hover:border-soft-border focus:border-soft-mustard outline-none text-soft-text transition"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => name !== g.name && onUpdate({ name })}
+            dir="auto"
+          />
+        </td>
+        <td className="border-b border-soft-border py-3">
+          <select
+            className="bg-soft-input rounded-soft-pill px-3 py-1 text-sm shadow-soft-pill outline-none"
+            value={g.kind}
+            onChange={(e) => onUpdate({ kind: e.target.value as GradeKind })}
+          >
+            <option value="exam">{KIND_LABEL.exam}</option>
+            <option value="assignment">{KIND_LABEL.assignment}</option>
+            <option value="project">{KIND_LABEL.project}</option>
+            <option value="other">{KIND_LABEL.other}</option>
+          </select>
+        </td>
+        <td className="border-b border-soft-border py-3">
+          <input
+            type="number"
+            step="0.5"
+            min="0"
+            max="100"
+            className="w-20 bg-transparent border-b border-transparent hover:border-soft-border focus:border-soft-mustard outline-none text-soft-text transition"
+            value={grade}
+            onChange={(e) => setGrade(e.target.value)}
+            onBlur={() => {
+              const v = Number(grade);
+              if (!isNaN(v) && v !== g.grade) onUpdate({ grade: v });
+            }}
+          />
+        </td>
+        <td className="border-b border-soft-border py-3">
+          <input
+            type="number"
+            step="1"
+            min="0"
+            max="100"
+            className="w-16 bg-transparent border-b border-transparent hover:border-soft-border focus:border-soft-mustard outline-none text-soft-text transition"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            onBlur={() => {
+              const v = Number(weight);
+              if (!isNaN(v) && v !== g.weight_percent) onUpdate({ weight_percent: v });
+            }}
+          />
+          <span className="text-soft-muted ms-1">%</span>
+        </td>
+        <td className="border-b border-soft-border py-3 pe-3 text-end">
+          <button
+            type="button"
+            className="icon-btn-soft-danger"
+            onClick={onRemove}
+            aria-label="מחק ציון"
+          >
+            <TrashIcon size={16} />
+          </button>
+        </td>
+      </tr>
+    );
+  }
 
   return (
     <tr className="align-middle">

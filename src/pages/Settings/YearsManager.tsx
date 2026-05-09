@@ -3,7 +3,34 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { newId } from '../../lib/ids';
 import { useYears, useAllSemesters } from '../../hooks/useTreeData';
+import { USE_SOFT_DESIGN } from '../../lib/design';
 import type { Year, Semester } from '../../types/domain';
+
+const T = USE_SOFT_DESIGN
+  ? {
+      card: 'card-soft',
+      title: 'text-xl font-bold text-soft-text mb-4',
+      field: 'field-soft',
+      btnPrimary: 'btn-soft-primary',
+      btnSec: 'btn-soft text-sm !px-3 !py-1',
+      empty: 'text-sm text-soft-muted',
+      yearLi: 'rounded-soft-md bg-soft-cream shadow-soft-pill overflow-hidden',
+      yearHead: 'flex items-center gap-2 p-3 border-b border-soft-border',
+      semSubtitle: 'font-medium text-sm text-soft-text mb-3',
+      semLi: 'grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-3 items-center rounded-soft-md bg-soft-card px-3 py-2 shadow-soft-pill',
+    }
+  : {
+      card: 'card',
+      title: 'text-xl mb-3',
+      field: 'field',
+      btnPrimary: 'btn',
+      btnSec: 'btn-secondary !px-3 !py-1 text-sm',
+      empty: 'text-sm text-ink/50',
+      yearLi: 'rounded-xl border-2 border-ink bg-cream',
+      yearHead: 'flex items-center gap-2 p-3 border-b-2 border-ink/20',
+      semSubtitle: 'font-display font-bold uppercase text-sm mb-2',
+      semLi: 'grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-3 items-center rounded-lg border-2 border-ink bg-paper px-3 py-2',
+    };
 
 export function YearsManager() {
   const { user } = useAuth();
@@ -39,12 +66,12 @@ export function YearsManager() {
   }
 
   return (
-    <section className="card">
-      <h2 className="text-xl mb-3">שנות לימודים</h2>
+    <section className={T.card}>
+      <h2 className={T.title}>שנות לימודים</h2>
 
       <div className="flex gap-2 mb-3">
         <input
-          className="field flex-1"
+          className={`${T.field} flex-1`}
           value={newYearLabel}
           onChange={(e) => setNewYearLabel(e.target.value)}
           onKeyDown={(e) => {
@@ -53,13 +80,13 @@ export function YearsManager() {
           placeholder='שם שנה (לדוגמה: תשפ"ו)'
           dir="auto"
         />
-        <button type="button" className="btn" onClick={handleAddYear}>
+        <button type="button" className={T.btnPrimary} onClick={handleAddYear}>
           הוסף שנה
         </button>
       </div>
 
       {years.length === 0 ? (
-        <p className="text-sm text-ink/50">אין שנים עדיין</p>
+        <p className={T.empty}>אין שנים עדיין</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {years.map((year) => (
@@ -127,8 +154,8 @@ function YearRow({
   }
 
   return (
-    <li className="rounded-xl border-2 border-ink bg-cream">
-      <div className="flex items-center gap-2 p-3 border-b-2 border-ink/20">
+    <li className={T.yearLi}>
+      <div className={T.yearHead}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -138,22 +165,22 @@ function YearRow({
           {open ? '▾' : '▸'}
         </button>
         <input
-          className="field flex-1"
+          className={`${T.field} flex-1`}
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           onBlur={() => label !== year.label && onUpdate(label)}
           dir="auto"
         />
-        <button type="button" className="btn-secondary !px-3 !py-1 text-sm" onClick={onDelete}>
+        <button type="button" className={T.btnSec} onClick={onDelete}>
           מחק שנה
         </button>
       </div>
 
       {open && (
         <div className="p-3">
-          <h3 className="font-display font-bold uppercase text-sm mb-2">סמסטרים</h3>
+          <h3 className={T.semSubtitle}>סמסטרים</h3>
           {semesters.length === 0 ? (
-            <p className="text-sm text-ink/50 mb-2">אין סמסטרים בשנה זו</p>
+            <p className={`${T.empty} mb-2`}>אין סמסטרים בשנה זו</p>
           ) : (
             <ul className="flex flex-col gap-2 mb-3">
               {semesters.map((sem) => (
@@ -168,7 +195,7 @@ function YearRow({
           )}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
             <input
-              className="field"
+              className={T.field}
               value={newSemLabel}
               onChange={(e) => setNewSemLabel(e.target.value)}
               placeholder="שם סמסטר"
@@ -176,19 +203,19 @@ function YearRow({
             />
             <input
               type="date"
-              className="field min-w-[10rem]"
+              className={`${T.field} min-w-[10rem]`}
               value={newSemStart}
               onChange={(e) => setNewSemStart(e.target.value)}
             />
             <input
               type="date"
-              className="field min-w-[10rem]"
+              className={`${T.field} min-w-[10rem]`}
               value={newSemEnd}
               onChange={(e) => setNewSemEnd(e.target.value)}
             />
             <button
               type="button"
-              className="btn"
+              className={T.btnPrimary}
               onClick={handleAddSemester}
             >
               הוסף סמסטר
@@ -214,9 +241,9 @@ function SemesterRow({
   const [end, setEnd] = useState(semester.end_date ?? '');
 
   return (
-    <li className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-3 items-center rounded-lg border-2 border-ink bg-paper px-3 py-2">
+    <li className={T.semLi}>
       <input
-        className="field"
+        className={T.field}
         value={label}
         onChange={(e) => setLabel(e.target.value)}
         onBlur={() => label !== semester.label && onUpdate({ label })}
@@ -224,19 +251,19 @@ function SemesterRow({
       />
       <input
         type="date"
-        className="field min-w-[10rem]"
+        className={`${T.field} min-w-[10rem]`}
         value={start}
         onChange={(e) => setStart(e.target.value)}
         onBlur={() => start !== (semester.start_date ?? '') && onUpdate({ start_date: start || null })}
       />
       <input
         type="date"
-        className="field min-w-[10rem]"
+        className={`${T.field} min-w-[10rem]`}
         value={end}
         onChange={(e) => setEnd(e.target.value)}
         onBlur={() => end !== (semester.end_date ?? '') && onUpdate({ end_date: end || null })}
       />
-      <button type="button" className="btn-secondary !px-3 !py-1 text-sm" onClick={onDelete}>
+      <button type="button" className={T.btnSec} onClick={onDelete}>
         מחק
       </button>
     </li>

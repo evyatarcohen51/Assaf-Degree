@@ -4,6 +4,7 @@ import { useAuth } from '../../lib/auth';
 import { useTable } from '../../lib/useRealtime';
 import { TopicGrid } from './TopicGrid';
 import { GradesSection } from './GradesSection';
+import { USE_SOFT_DESIGN } from '../../lib/design';
 import type { Subject } from '../../types/domain';
 
 export function SubjectPage() {
@@ -30,6 +31,27 @@ export function SubjectPage() {
   );
 
   if (!yearId || !semId || !subjectId) return null;
+
+  if (USE_SOFT_DESIGN) {
+    return (
+      <div className="flex flex-col gap-7">
+        <header className="card-soft-hero flex flex-col items-center text-center gap-1">
+          <h1 className="text-3xl md:text-4xl font-display font-black text-soft-text">
+            <bdi>{subject?.name ?? '—'}</bdi>
+          </h1>
+          {subject && subject.credit_points > 0 && (
+            <p className="text-sm text-soft-text/80 mt-1">
+              נקודות זכות: <strong>{subject.credit_points}</strong>
+            </p>
+          )}
+        </header>
+
+        <TopicGrid subjectId={subjectId} yearId={yearId} semId={semId} />
+
+        <GradesSection subjectId={subjectId} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

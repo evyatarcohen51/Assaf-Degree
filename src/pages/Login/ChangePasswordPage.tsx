@@ -3,6 +3,7 @@ import { updatePassword } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
+import { USE_SOFT_DESIGN } from '../../lib/design';
 
 export function ChangePasswordPage({ mandatory }: { mandatory?: boolean }) {
   const { user } = useAuth();
@@ -35,6 +36,63 @@ export function ChangePasswordPage({ mandatory }: { mandatory?: boolean }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (USE_SOFT_DESIGN) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <header className="text-center mb-6 rounded-soft bg-soft-mustard text-soft-text px-6 py-5 shadow-soft-lg">
+            <h1 className="font-display text-3xl font-black tracking-tight text-soft-text">Got Schooled</h1>
+          </header>
+
+          <form onSubmit={handleSubmit} className="card-soft flex flex-col gap-4">
+            <h2 className="text-xl font-bold text-soft-text">{mandatory ? 'הגדרת סיסמה ראשונית' : 'החלפת סיסמה'}</h2>
+            {mandatory && (
+              <p className="text-sm text-soft-muted">
+                זו הכניסה הראשונה שלך — הגדר סיסמה חדשה לפני שתמשיך.
+              </p>
+            )}
+
+            <label className="block">
+              <span className="block text-sm text-soft-muted mb-2">סיסמה חדשה</span>
+              <input
+                className="field-soft"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                value={pw1}
+                onChange={(e) => setPw1(e.target.value)}
+              />
+            </label>
+
+            <label className="block">
+              <span className="block text-sm text-soft-muted mb-2">אימות סיסמה</span>
+              <input
+                className="field-soft"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                value={pw2}
+                onChange={(e) => setPw2(e.target.value)}
+              />
+            </label>
+
+            {error && (
+              <div className="rounded-soft-md bg-soft-rose/40 px-4 py-2 text-sm text-soft-text shadow-soft-pill">
+                {error}
+              </div>
+            )}
+
+            <button type="submit" className="btn-soft-primary" disabled={busy}>
+              {busy ? '...' : 'שמור'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
   }
 
   return (

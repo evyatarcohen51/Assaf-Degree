@@ -10,6 +10,19 @@
   --c-paper: 240 234 223;     /* #F0EADF */
   --c-smoke: 232 229 224;     /* #E8E5E0 */
   --shadow-ink: #2A2A2A;
+
+  /* Soft-neumorphic neutrals — warm gray palette */
+  --soft-cream:  234 232 228; /* #EAE8E4 light warm-gray page bg */
+  --soft-card:   216 213 207; /* #D8D5CF medium warm-gray cards + sidebar */
+  --soft-input:  196 192 184; /* #C4C0B8 darker warm-gray inputs */
+  --soft-text:    59  59  59; /* #3B3B3B */
+  --soft-muted:  108 104  98; /* legible placeholder/secondary text on gray */
+  --soft-border: 178 173 162; /* #B2ADA2 visible divider on cards */
+
+  /* Dual neumorphic shadows — gentle 3D lift for cards */
+  --soft-shadow:         9px 12px 22px rgba(0, 0, 0, 0.18), -6px -8px 16px rgba(255, 255, 255, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  --soft-shadow-lg:      14px 16px 30px rgba(0, 0, 0, 0.22), -8px -10px 22px rgba(255, 255, 255, 1.0), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --soft-shadow-pressed: inset 6px 6px 12px rgba(0, 0, 0, 0.13), inset -6px -6px 12px rgba(255, 255, 255, 0.6);
 }
 html.dark {
   --c-ink:   220 215 205;     /* warm light gray */
@@ -18,6 +31,19 @@ html.dark {
   --c-paper: 22 21 18;        /* sidebar background */
   --c-smoke: 40 37 32;        /* card surface */
   --shadow-ink: #000000;
+
+  /* Soft-neumorphic neutrals (dark) */
+  --soft-cream:   26  24  21;
+  --soft-card:    37  34  30;
+  --soft-input:   45  42  38;
+  --soft-text:   232 229 222;
+  --soft-muted:  156 152 143;
+  --soft-border:  60  56  50;
+
+  /* Dual shadows tinted for dark mode — same 3D lift, warm highlight */
+  --soft-shadow:         9px 12px 22px rgba(0, 0, 0, 0.65), -6px -8px 16px rgba(60, 55, 48, 0.75), inset 0 1px 0 rgba(85, 78, 68, 0.55);
+  --soft-shadow-lg:      14px 16px 30px rgba(0, 0, 0, 0.7), -8px -10px 22px rgba(60, 55, 48, 0.85), inset 0 1px 0 rgba(85, 78, 68, 0.6);
+  --soft-shadow-pressed: inset 6px 6px 12px rgba(0, 0, 0, 0.6), inset -6px -6px 12px rgba(60, 55, 48, 0.5);
 }
 
 @layer base {
@@ -39,6 +65,12 @@ html.dark {
     opacity: 0.2;
     z-index: -1;
   }
+  /* Soft-design body — toggled in main.tsx based on USE_SOFT_DESIGN */
+  html.soft-design body {
+    @apply text-soft-text;
+    background: rgb(var(--soft-cream));
+  }
+  /* Background.png texture stays at the original opacity (0.2) — no override */
   h1, h2, h3, h4 { @apply font-display font-black; }
   /* Honor RTL on form controls */
   input, textarea, select { @apply text-start; }
@@ -84,4 +116,74 @@ html.dark {
   .glow-red    { @apply shadow-glow-red border-red; }
   .glow-yellow { @apply shadow-glow-yellow border-yellow; }
   .glow-green  { @apply shadow-glow-green border-green; }
+
+  /* ── Soft-Neumorphic redesign (gated by USE_SOFT_DESIGN) ────────────────── */
+  /* New classes live alongside the originals; nothing above is touched. */
+
+  .card-soft {
+    @apply rounded-soft bg-soft-card text-soft-text shadow-soft p-7;
+  }
+  .card-soft-hero {
+    @apply rounded-soft bg-soft-mustard text-soft-text shadow-soft-lg p-7;
+  }
+
+  .btn-soft {
+    @apply inline-flex items-center justify-center rounded-soft-pill bg-soft-input text-soft-text px-5 py-2 font-medium shadow-soft-pill cursor-pointer select-none transition;
+  }
+  .btn-soft:hover:not(:disabled) { @apply brightness-95 shadow-soft-pill-hover; }
+  .btn-soft:active:not(:disabled) { @apply scale-[0.98] shadow-soft-pressed; }
+  .btn-soft:disabled { @apply cursor-not-allowed shadow-none bg-soft-input/50 text-soft-muted; }
+
+  .btn-soft-primary {
+    @apply inline-flex items-center justify-center rounded-soft-pill bg-soft-mustard text-soft-text px-5 py-2 font-medium shadow-soft-pill cursor-pointer select-none transition;
+  }
+  .btn-soft-primary:hover:not(:disabled) { @apply brightness-105 shadow-soft-pill-hover; }
+  .btn-soft-primary:active:not(:disabled) { @apply scale-[0.98] shadow-soft-pressed; }
+  .btn-soft-primary:disabled { @apply cursor-not-allowed shadow-none bg-soft-input/50 text-soft-muted; }
+
+  .btn-soft-danger {
+    @apply inline-flex items-center justify-center rounded-soft-pill bg-soft-rose text-soft-text px-5 py-2 font-medium shadow-soft-pill cursor-pointer select-none transition;
+  }
+  .btn-soft-danger:hover:not(:disabled) { @apply brightness-95 shadow-soft-pill-hover; }
+  .btn-soft-danger:active:not(:disabled) { @apply scale-[0.98] shadow-soft-pressed; }
+  .btn-soft-danger:disabled { @apply cursor-not-allowed shadow-none bg-soft-input/50 text-soft-muted; }
+
+  .field-soft {
+    @apply w-full rounded-[20px] bg-soft-input text-soft-text px-4 py-2 font-body shadow-soft-inset placeholder:text-soft-muted outline-none border-0 transition;
+  }
+  .field-soft:focus { @apply ring-2 ring-soft-mustard/40; }
+
+  /* Status / category pills — softly elevated to feel like dimensional capsules */
+  .pill-soft         { @apply inline-flex items-center rounded-soft-pill px-3.5 py-1.5 text-sm font-medium shadow-soft-pill; }
+  .pill-soft-mustard { @apply pill-soft bg-soft-mustard-pale text-soft-text; }
+  .pill-soft-green   { @apply pill-soft bg-soft-green-pale   text-soft-text; }
+  .pill-soft-rose    { @apply pill-soft bg-soft-rose         text-soft-text; }
+  .pill-soft-blue    { @apply pill-soft bg-soft-blue-pale    text-soft-text; }
+  .pill-soft-muted   { @apply pill-soft bg-soft-input        text-soft-muted; }
+
+  /* Icon buttons in row actions (trash, edit, etc.) */
+  .icon-btn-soft {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded-full bg-soft-input text-soft-text shadow-soft-pill cursor-pointer transition;
+  }
+  .icon-btn-soft:hover { @apply brightness-95 shadow-soft-pill-hover; }
+  .icon-btn-soft:active { @apply scale-95 shadow-soft-pressed; }
+  .icon-btn-soft-danger {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded-full bg-soft-rose/40 text-red shadow-soft-pill cursor-pointer transition;
+  }
+  .icon-btn-soft-danger:hover { @apply bg-soft-rose/60 shadow-soft-pill-hover; }
+  .icon-btn-soft-danger:active { @apply scale-95 shadow-soft-pressed; }
+  .icon-btn-soft-edit {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded-full bg-soft-mustard-pale/60 text-soft-text shadow-soft-pill cursor-pointer transition;
+  }
+  .icon-btn-soft-edit:hover { @apply bg-soft-mustard-pale shadow-soft-pill-hover; }
+  .icon-btn-soft-edit:active { @apply scale-95 shadow-soft-pressed; }
+
+  /* Progress bar */
+  .progress-soft       { @apply h-2.5 w-full rounded-full bg-soft-input overflow-hidden; }
+  .progress-soft-fill  { @apply h-full bg-soft-green rounded-full transition-all; }
+
+  /* List rows inside cards — mini-bubble with darker bg + drop shadow */
+  .row-soft {
+    @apply flex items-center justify-between px-4 py-3 rounded-soft-md bg-soft-cream shadow-soft-pill transition hover:shadow-soft-pill-hover;
+  }
 }

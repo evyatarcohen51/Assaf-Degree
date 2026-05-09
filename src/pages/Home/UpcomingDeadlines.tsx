@@ -5,6 +5,8 @@ import { useUpcomingDeadlines } from '../../hooks/useDeadlines';
 import { useAllSubjects } from '../../hooks/useTreeData';
 import { newId } from '../../lib/ids';
 import { formatDateHe } from '../../lib/progress';
+import { USE_SOFT_DESIGN } from '../../lib/design';
+import { PencilIcon, TrashIcon, CalendarIcon, BellIcon } from '../../ui/icons';
 import type { Deadline, DeadlineKind } from '../../types/domain';
 
 const KIND_LABEL: Record<DeadlineKind, string> = {
@@ -40,6 +42,13 @@ function dateBadgeClass(days: number): string {
   return 'rounded-full border-2 border-green bg-green px-3 py-1 font-display font-bold text-cream shadow-glow-green';
 }
 
+function dateBadgeClassSoft(days: number): string {
+  if (days < 0) return 'pill-soft-muted';
+  if (days <= 1) return 'pill-soft-rose';
+  if (days <= 7) return 'pill-soft-mustard';
+  return 'pill-soft-green';
+}
+
 function toDatetimeLocal(iso: string) {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -47,6 +56,7 @@ function toDatetimeLocal(iso: string) {
 }
 
 // ── Reminder modal (used both for new-deadline reminder and edit) ──────────────
+// Modals stay on the original sticker style for Phase 1; they get redesigned in Phase 5.
 interface ReminderModalProps {
   reminderAt: string;
   setReminderAt: (v: string) => void;
@@ -282,6 +292,145 @@ export function UpcomingDeadlines() {
 
   const hasReminder = pendingReminderAt !== '';
 
+  if (USE_SOFT_DESIGN) {
+    return (
+      <div className="flex flex-col gap-4">
+        {subjects.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <input
+                className="field-soft"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="כותרת"
+                dir="auto"
+              />
+              <select
+                className="field-soft"
+                value={subjectId}
+                onChange={(e) => setSubjectId(e.target.value)}
+              >
+                <option value="">— קורס —</option>
+                {subjects.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+                <option value={OTHER_SUBJECT}>אחר</option>
+              </select>
+              <select
+                className="field-soft"
+                value={kind}
+                onChange={(e) => setKind(e.target.value as DeadlineKind)}
+              >
+                <option value="exam">מבחן</option>
+                <option value="assignment">מטלה</option>
+                <option value="other">אחר</option>
+              </select>
+              <div className="relative">
+                <input
+                  type="date"
+                  className="field-soft pe-9"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+                <CalendarIcon
+                  size={16}
+                  className="absolute end-3 top-1/2 -translate-y-1/2 text-soft-muted pointer-events-none"
+                />
+              </div>
+              <button type="button" className="btn-soft-primary" onClick={handleAdd}>
+                הוסף
+              </button>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                className="text-sm underline text-soft-muted hover:text-soft-text transition"
+                onClick={() => setShowNewReminderModal(true)}
+              >
+                {hasReminder ? '✓ תזכורת במייל מוגדרת' : 'הוסף תזכורת במייל'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <ul className="flex flex-col gap-2.5">
+          {deadlines.map((d) => (
+            <li key={d.id} className="row-soft">
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-soft-text">
+                  <bdi>{d.title}</bdi>{' '}
+                  <span className="text-xs text-soft-muted">({KIND_LABEL[d.kind]})</span>
+                </div>
+                <div className="text-xs text-soft-muted mt-0.5">
+                  <bdi>{subjectName(d.subject_id)}</bdi>
+                  {d.reminder_email_at && (
+                    <span className="ms-2 inline-flex items-center gap-1">
+                      <BellIcon size={12} />
+                      {d.reminder_recurring_days ? `כל ${d.reminder_recurring_days} ימים` : 'תזכורת'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 ms-3">
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className={dateBadgeClassSoft(daysUntil(d.date))}>
+                    {formatDateHe(d.date)}
+                  </span>
+                  {daysUntil(d.date) < 0 && (
+                    <span className="text-[10px] text-soft-muted font-medium">עבר</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="icon-btn-soft-edit"
+                  onClick={() => setEditingDeadline(d)}
+                  aria-label="ערוך מועד"
+                >
+                  <PencilIcon size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn-soft-danger"
+                  onClick={() => handleRemove(d.id)}
+                  aria-label="מחק מועד"
+                >
+                  <TrashIcon size={16} />
+                </button>
+              </div>
+            </li>
+          ))}
+          {deadlines.length === 0 && (
+            <li className="text-sm text-soft-muted py-3">אין מועדים קרובים</li>
+          )}
+        </ul>
+
+        {showNewReminderModal && (
+          <ReminderModal
+            reminderAt={pendingReminderAt}
+            setReminderAt={setPendingReminderAt}
+            recurring={pendingRecurring}
+            setRecurring={setPendingRecurring}
+            onClose={() => setShowNewReminderModal(false)}
+            onConfirm={() => setShowNewReminderModal(false)}
+          />
+        )}
+
+        {editingDeadline && (
+          <EditDeadlineModal
+            deadline={editingDeadline}
+            subjects={subjects}
+            onClose={() => setEditingDeadline(null)}
+            onSave={(updates) => handleSaveEdit(editingDeadline.id, updates)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Original sticker design
   return (
     <div className="flex flex-col gap-3">
       {subjects.length > 0 && (

@@ -4,7 +4,30 @@ import { useAuth } from '../../lib/auth';
 import { useTable } from '../../lib/useRealtime';
 import { newId } from '../../lib/ids';
 import { useSubjectsBySemester } from '../../hooks/useTreeData';
+import { USE_SOFT_DESIGN } from '../../lib/design';
 import type { ScheduleSlot, Weekday } from '../../types/domain';
+
+const T = USE_SOFT_DESIGN
+  ? {
+      card: 'card-soft',
+      title: 'text-xl font-bold text-soft-text mb-4',
+      field: 'field-soft',
+      btnPrimary: 'btn-soft-primary',
+      btnSec: 'btn-soft text-sm !px-3 !py-1',
+      itemRow: 'flex items-center justify-between rounded-soft-md bg-soft-cream px-4 py-3 shadow-soft-pill',
+      empty: 'text-sm text-soft-muted',
+      hint: 'text-sm text-soft-muted',
+    }
+  : {
+      card: 'card',
+      title: 'text-xl mb-3',
+      field: 'field',
+      btnPrimary: 'btn',
+      btnSec: 'btn-secondary !px-3 !py-1 text-sm',
+      itemRow: 'flex items-center justify-between rounded-xl border-2 border-ink bg-paper px-3 py-2',
+      empty: 'text-sm text-ink/50',
+      hint: 'text-sm text-ink/60',
+    };
 
 const WEEKDAYS = [
   { value: 0, label: 'ראשון' },
@@ -103,16 +126,16 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
   const subjectName = (id: string) => subjects.find((s) => s.id === id)?.name ?? '?';
 
   return (
-    <section className="card">
-      <h2 className="text-xl mb-3">מערכת שעות שבועית</h2>
+    <section className={T.card}>
+      <h2 className={T.title}>מערכת שעות שבועית</h2>
 
       {subjects.length === 0 ? (
-        <p className="text-sm text-ink/60">הוסף קורסים תחילה</p>
+        <p className={T.hint}>הוסף קורסים תחילה</p>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
             <select
-              className="field"
+              className={T.field}
               value={subjectId}
               onChange={(e) => setSubjectId(e.target.value)}
             >
@@ -124,7 +147,7 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
               ))}
             </select>
             <select
-              className="field"
+              className={T.field}
               value={weekday}
               onChange={(e) => setWeekday(Number(e.target.value) as Weekday)}
             >
@@ -136,37 +159,34 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
             </select>
             <input
               type="time"
-              className="field min-w-[7rem]"
+              className={`${T.field} min-w-[7rem]`}
               value={start}
               onChange={(e) => setStart(e.target.value)}
             />
             <input
               type="time"
-              className="field min-w-[7rem]"
+              className={`${T.field} min-w-[7rem]`}
               value={end}
               onChange={(e) => setEnd(e.target.value)}
             />
             <input
-              className="field"
+              className={T.field}
               value={room}
               onChange={(e) => setRoom(e.target.value)}
               placeholder="חדר"
               dir="auto"
             />
           </div>
-          <button type="button" className="btn mb-4" onClick={handleAdd}>
+          <button type="button" className={`${T.btnPrimary} mb-4`} onClick={handleAdd}>
             הוסף שיעור
           </button>
         </>
       )}
 
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-2.5">
         {display.map((s) => (
-          <li
-            key={s.id}
-            className="flex items-center justify-between rounded-xl border-2 border-ink bg-paper px-3 py-2"
-          >
-            <span>
+          <li key={s.id} className={T.itemRow}>
+            <span className={USE_SOFT_DESIGN ? 'text-soft-text' : ''}>
               <strong>
                 <bdi>{subjectName(s.subject_id)}</bdi>
               </strong>{' '}
@@ -176,14 +196,14 @@ export function WeeklyScheduleSection({ semesterId }: { semesterId: string }) {
             </span>
             <button
               type="button"
-              className="btn-secondary !px-3 !py-1 text-sm"
+              className={T.btnSec}
               onClick={() => handleRemove(s.id)}
             >
               מחק
             </button>
           </li>
         ))}
-        {display.length === 0 && <li className="text-sm text-ink/50">אין שיעורים עדיין</li>}
+        {display.length === 0 && <li className={T.empty}>אין שיעורים עדיין</li>}
       </ul>
     </section>
   );

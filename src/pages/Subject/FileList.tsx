@@ -10,6 +10,8 @@ import {
 import { useAuth } from '../../lib/auth';
 import { downloadBlob, formatBytes } from '../../lib/files';
 import { formatDateHe } from '../../lib/progress';
+import { USE_SOFT_DESIGN } from '../../lib/design';
+import { TrashIcon } from '../../ui/icons';
 import type { FileRecord } from '../../types/domain';
 
 type SortKey = 'name' | 'time';
@@ -34,7 +36,6 @@ export function FileList({ topicId }: { topicId: string }) {
       out = out.filter((f) => f.is_favorite);
     }
     out.sort((a, b) => {
-      // Favorites always first within same sort group
       if (a.is_favorite !== b.is_favorite) return a.is_favorite ? -1 : 1;
       let cmp = 0;
       if (sortKey === 'name') cmp = a.name.localeCompare(b.name, 'he');
@@ -71,6 +72,111 @@ export function FileList({ topicId }: { topicId: string }) {
     } catch (err) {
       alert(`עדכון נכשל: ${err instanceof Error ? err.message : err}`);
     }
+  }
+
+  if (USE_SOFT_DESIGN) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row gap-2 items-stretch">
+          <input
+            className="field-soft flex-1"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="חפש לפי שם..."
+            dir="auto"
+          />
+          <label className="inline-flex items-center gap-2 rounded-soft-pill bg-soft-input px-4 py-2 cursor-pointer shadow-soft-pill">
+            <input
+              type="checkbox"
+              checked={favoritesOnly}
+              onChange={(e) => setFavoritesOnly(e.target.checked)}
+            />
+            <span className="font-medium text-soft-text text-sm">מועדפים בלבד</span>
+          </label>
+        </div>
+
+        {display.length === 0 ? (
+          <p className="text-sm text-soft-muted">אין קבצים</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="border-b border-soft-border py-3 ps-3 w-10"></th>
+                  <th
+                    className="border-b border-soft-border py-3 text-start text-soft-muted text-sm font-medium cursor-pointer"
+                    onClick={() => flipSort('name')}
+                  >
+                    שם {sortKey === 'name' && (sortDir === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th
+                    className="border-b border-soft-border py-3 text-start text-soft-muted text-sm font-medium cursor-pointer"
+                    onClick={() => flipSort('time')}
+                  >
+                    הועלה {sortKey === 'time' && (sortDir === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th className="border-b border-soft-border py-3 pe-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {display.map((f) => (
+                  <tr key={f.id} className="align-middle">
+                    <td className="border-b border-soft-border py-3 ps-3">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleFav(f)}
+                        aria-label={f.is_favorite ? 'הסר מועדף' : 'סמן כמועדף'}
+                        className={`text-2xl leading-none transition ${
+                          f.is_favorite ? 'text-soft-mustard' : 'text-soft-muted hover:text-soft-text'
+                        }`}
+                      >
+                        {f.is_favorite ? '★' : '☆'}
+                      </button>
+                    </td>
+                    <td className="border-b border-soft-border py-3 max-w-xs">
+                      <div className="font-medium text-soft-text truncate">
+                        <bdi>{f.name}</bdi>
+                      </div>
+                      <div className="text-xs text-soft-muted">{formatBytes(f.size)}</div>
+                    </td>
+                    <td className="border-b border-soft-border py-3 text-sm text-soft-muted">
+                      {formatDateHe(f.added_at)}
+                    </td>
+                    <td className="border-b border-soft-border py-3 pe-3 text-end whitespace-nowrap">
+                      <button
+                        type="button"
+                        className="btn-soft text-sm !px-3 !py-1 me-1"
+                        onClick={() => handleOpen(f.id, f.storage_path)}
+                      >
+                        פתח
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-soft text-sm !px-3 !py-1 me-1"
+                        onClick={() => handleDownload(f.storage_path, f.name)}
+                      >
+                        הורד
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-btn-soft-danger"
+                        onClick={() => {
+                          if (!user) return;
+                          if (confirm('למחוק?')) deleteFile(user.id, f.id, f.storage_path);
+                        }}
+                        aria-label="מחק קובץ"
+                      >
+                        <TrashIcon size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (

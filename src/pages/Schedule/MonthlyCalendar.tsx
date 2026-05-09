@@ -3,7 +3,79 @@ import { HDate, HebrewCalendar } from '@hebcal/core';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useTable } from '../../lib/useRealtime';
+import { USE_SOFT_DESIGN } from '../../lib/design';
 import type { Deadline, Semester, ScheduleSlot, Subject } from '../../types/domain';
+
+// Theme-aware classes (soft vs sticker)
+const TH = USE_SOFT_DESIGN
+  ? {
+      navBtn: 'w-9 h-9 flex items-center justify-center rounded-soft-pill bg-soft-input text-soft-text shadow-soft-pill hover:shadow-soft-pill-hover transition font-bold text-xl leading-none',
+      monthName: 'font-display font-bold text-xl text-soft-text',
+      hebrewSub: 'text-xs text-soft-muted mt-0.5',
+      dowFrame: 'grid grid-cols-7 rounded-t-soft overflow-hidden bg-soft-card',
+      dowSat: 'text-soft-rose',
+      dowOther: 'text-soft-muted',
+      dayFrame: 'grid grid-cols-7 rounded-b-soft overflow-hidden bg-soft-card shadow-soft',
+      emptyCell: 'min-h-[88px] bg-soft-cream/50 border-e border-b border-soft-border/40',
+      cellBase: 'border-e border-b border-soft-border/40',
+      cellHoverNormal: 'hover:bg-soft-mustard/10',
+      cellSelected: 'bg-soft-mustard/20 ring-2 ring-inset ring-soft-mustard',
+      cellSat: 'bg-soft-input/20',
+      cellSemBoundary: 'ring-2 ring-inset ring-soft-mustard',
+      hebDate: 'text-[10px] text-soft-muted leading-none',
+      todayBadge: 'bg-soft-text text-soft-card rounded-full w-6 h-6 flex items-center justify-center text-xs',
+      gregDate: 'text-sm font-bold leading-none text-soft-text',
+      semBoundary: 'text-[10px] font-bold text-soft-text leading-tight',
+      holiday: 'text-[9px] font-medium text-soft-rose leading-tight truncate',
+      extraCount: 'text-[8px] text-soft-muted',
+      summaryHeading: 'font-display font-bold text-soft-text mb-3',
+      semBoundaryBox: 'mb-3 rounded-soft-md bg-soft-mustard/30 px-3 py-2 shadow-soft-pill',
+      semBoundaryTitle: 'text-sm font-bold text-soft-text',
+      semBoundaryLabel: 'text-xs text-soft-muted mt-0.5',
+      holidayBox: 'mb-3 rounded-soft-md bg-soft-rose/40 px-3 py-2 shadow-soft-pill',
+      holidayText: 'text-sm font-bold text-soft-text',
+      sectionLabel: 'text-[10px] font-medium text-soft-muted uppercase mb-2',
+      detailItem: 'rounded-soft-md bg-soft-cream px-3 py-2 overflow-hidden shadow-soft-pill',
+      detailTitle: 'font-medium text-sm text-soft-text',
+      detailMeta: 'text-xs text-soft-muted',
+      emptyText: 'text-sm text-soft-muted',
+      legendActive: 'flex items-center gap-1 transition-opacity opacity-100 font-medium text-soft-text',
+      legendInactive: 'flex items-center gap-1 transition-opacity opacity-40 text-soft-muted',
+    }
+  : {
+      navBtn: 'w-9 h-9 flex items-center justify-center rounded-lg hover:bg-ink/10 font-bold text-xl leading-none',
+      monthName: 'font-display font-bold text-xl',
+      hebrewSub: 'text-xs text-ink/50 mt-0.5',
+      dowFrame: 'grid grid-cols-7 border-x-2 border-t-2 border-ink rounded-t-xl overflow-hidden',
+      dowSat: 'text-red',
+      dowOther: 'text-ink/60',
+      dayFrame: 'grid grid-cols-7 border-2 border-t-0 border-ink rounded-b-xl overflow-hidden',
+      emptyCell: 'min-h-[88px] bg-smoke/30 border-e border-b border-ink/10',
+      cellBase: 'border-e border-b border-ink/10',
+      cellHoverNormal: 'hover:bg-ink/5',
+      cellSelected: 'bg-ink/10 ring-2 ring-inset ring-ink',
+      cellSat: 'bg-dot/[0.04]',
+      cellSemBoundary: 'ring-2 ring-inset ring-yellow',
+      hebDate: 'text-[10px] text-ink/55 leading-none',
+      todayBadge: 'bg-ink text-cream rounded-full w-6 h-6 flex items-center justify-center text-xs',
+      gregDate: 'text-sm font-bold leading-none',
+      semBoundary: 'text-[10px] font-bold text-orange leading-tight',
+      holiday: 'text-[9px] font-medium text-red leading-tight truncate',
+      extraCount: 'text-[8px] text-ink/50',
+      summaryHeading: 'font-display font-bold uppercase mb-2',
+      semBoundaryBox: 'mb-3 rounded-xl border-2 border-yellow bg-yellow/15 px-3 py-2',
+      semBoundaryTitle: 'text-sm font-bold text-orange',
+      semBoundaryLabel: 'text-xs text-ink/70 mt-0.5',
+      holidayBox: 'mb-3 rounded-xl border-2 border-red/50 bg-red/5 px-3 py-2',
+      holidayText: 'text-sm font-bold text-red',
+      sectionLabel: 'text-[10px] font-bold text-ink/50 uppercase mb-1',
+      detailItem: 'rounded-xl border-2 border-ink bg-paper px-3 py-2 overflow-hidden',
+      detailTitle: 'font-bold text-sm',
+      detailMeta: 'text-xs text-ink/60',
+      emptyText: 'text-sm text-ink/50',
+      legendActive: 'flex items-center gap-1 transition-opacity opacity-100 font-bold',
+      legendInactive: 'flex items-center gap-1 transition-opacity opacity-40',
+    };
 
 function fmtTime(min: number): string {
   return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`;
@@ -186,40 +258,29 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
         {/* Navigation header */}
         <div className="flex items-center justify-between mb-3 px-1">
           {/* In RTL flex: first = rightmost visually */}
-          <button
-            onClick={nextMonth}
-            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-ink/10 font-bold text-xl leading-none"
-          >›</button>
+          <button onClick={nextMonth} className={TH.navBtn}>›</button>
           <div className="text-center leading-tight">
-            <div className="font-display font-bold text-xl">{GREG_MONTHS_HE[viewMonth]} {viewYear}</div>
-            <div className="text-xs text-ink/50 mt-0.5">{hebrewHeader}</div>
+            <div className={TH.monthName}>{GREG_MONTHS_HE[viewMonth]} {viewYear}</div>
+            <div className={TH.hebrewSub}>{hebrewHeader}</div>
           </div>
-          <button
-            onClick={prevMonth}
-            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-ink/10 font-bold text-xl leading-none"
-          >‹</button>
+          <button onClick={prevMonth} className={TH.navBtn}>‹</button>
         </div>
 
         {/* Day-of-week labels */}
-        <div className="grid grid-cols-7 border-x-2 border-t-2 border-ink rounded-t-xl overflow-hidden">
+        <div className={TH.dowFrame}>
           {DOW.map((d, i) => (
             <div
               key={d}
-              className={`py-2 text-center text-xs font-bold ${i === 6 ? 'text-red' : 'text-ink/60'}`}
+              className={`py-2 text-center text-xs font-bold ${i === 6 ? TH.dowSat : TH.dowOther}`}
             >{d}</div>
           ))}
         </div>
 
         {/* Day cells */}
-        <div className="grid grid-cols-7 border-2 border-t-0 border-ink rounded-b-xl overflow-hidden">
+        <div className={TH.dayFrame}>
           {days.map((day, idx) => {
             if (!day) {
-              return (
-                <div
-                  key={`empty-${idx}`}
-                  className="min-h-[88px] bg-smoke/30 border-e border-b border-ink/10"
-                />
-              );
+              return <div key={`empty-${idx}`} className={TH.emptyCell} />;
             }
 
             const key = dateKey(day);
@@ -240,36 +301,34 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
                 key={key}
                 onClick={() => setSelected(day)}
                 className={[
-                  'relative min-h-[88px] p-1.5 cursor-pointer border-e border-b border-ink/10',
+                  'relative min-h-[88px] p-1.5 cursor-pointer',
+                  TH.cellBase,
                   'flex flex-col gap-0.5 transition-colors select-none',
-                  isSel ? 'bg-ink/10 ring-2 ring-inset ring-ink' : 'hover:bg-ink/5',
-                  isSat ? 'bg-dot/[0.04]' : '',
-                  (isStart || isEnd) ? 'ring-2 ring-inset ring-yellow' : '',
+                  isSel ? TH.cellSelected : TH.cellHoverNormal,
+                  isSat ? TH.cellSat : '',
+                  (isStart || isEnd) ? TH.cellSemBoundary : '',
                 ].filter(Boolean).join(' ')}
               >
                 {/* Top row: Hebrew date (right) + Gregorian date (left) */}
                 <div className="flex justify-between items-start">
-                  <span className="text-[10px] text-ink/55 leading-none">
+                  <span className={TH.hebDate}>
                     {HDAY[hDay]}{isFirstOfHMonth && HEBREW_MONTHS[hMonth] ? ` ${HEBREW_MONTHS[hMonth]}` : ''}
                   </span>
-                  <span className={[
-                    'text-sm font-bold leading-none',
-                    isToday ? 'bg-ink text-cream rounded-full w-6 h-6 flex items-center justify-center text-xs' : '',
-                  ].filter(Boolean).join(' ')}>
+                  <span className={isToday ? TH.todayBadge : TH.gregDate}>
                     {day.getDate()}
                   </span>
                 </div>
 
                 {/* Semester boundary label */}
                 {(isStart || isEnd) && (
-                  <div className="text-[10px] font-bold text-orange leading-tight">
+                  <div className={TH.semBoundary}>
                     {isStart ? 'תחילת סמסטר' : 'סוף סמסטר'}
                   </div>
                 )}
 
                 {/* Holidays (up to 1) */}
                 {dayHols.slice(0, 1).map((h, hi) => (
-                  <div key={hi} className="text-[9px] font-medium text-red leading-tight truncate" title={h}>{h}</div>
+                  <div key={hi} className={TH.holiday} title={h}>{h}</div>
                 ))}
 
                 {/* Schedule slot chips */}
@@ -294,7 +353,7 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
                           </div>
                         );
                       })}
-                      {extra > 0 && <div className="text-[8px] text-ink/50">+{extra}</div>}
+                      {extra > 0 && <div className={TH.extraCount}>+{extra}</div>}
                     </div>
                   );
                 })()}
@@ -333,19 +392,19 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
           const hasSelHoliday = (holidays.get(selectedKey) ?? []).length > 0;
           const hasSelSem = selectedKey === semStartKey || selectedKey === semEndKey;
           return (
-            <div className="mt-2 flex gap-3 flex-wrap text-[10px] px-1">
-              <span className={`flex items-center gap-1 transition-opacity ${hasSelSem ? 'opacity-100 font-bold' : 'opacity-40'}`}>
-                <span className="inline-block w-3 h-3 rounded-full ring-2 ring-yellow bg-transparent" />
+            <div className="mt-3 flex gap-3 flex-wrap text-[10px] px-1">
+              <span className={hasSelSem ? TH.legendActive : TH.legendInactive}>
+                <span className={`inline-block w-3 h-3 rounded-full ring-2 bg-transparent ${USE_SOFT_DESIGN ? 'ring-soft-mustard' : 'ring-yellow'}`} />
                 תחילת/סוף סמסטר
               </span>
-              <span className={`flex items-center gap-1 transition-opacity ${hasSelHoliday ? 'opacity-100 font-bold' : 'opacity-40'}`}>
-                <span className="inline-block w-3 h-3 rounded-full bg-red" />
+              <span className={hasSelHoliday ? TH.legendActive : TH.legendInactive}>
+                <span className={`inline-block w-3 h-3 rounded-full ${USE_SOFT_DESIGN ? 'bg-soft-rose' : 'bg-red'}`} />
                 חג/מועד
               </span>
               {subjects.filter(s => s.color).map(s => {
                 const active = activeSubjectIds.has(s.id);
                 return (
-                  <span key={s.id} className={`flex items-center gap-1 transition-opacity ${active ? 'opacity-100 font-bold' : 'opacity-40'}`}>
+                  <span key={s.id} className={active ? TH.legendActive : TH.legendInactive}>
                     <span className="inline-block w-3 h-3 rounded-full" style={{ background: COLOR_HEX[s.color!] ?? '#555' }} />
                     <bdi>{s.name}</bdi>
                   </span>
@@ -358,25 +417,25 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
 
       {/* ── Detail panel ─────────────────────────────────────── */}
       <div className="w-full lg:w-72 shrink-0">
-        <h3 className="font-display font-bold uppercase mb-2">סיכום יום</h3>
+        <h3 className={TH.summaryHeading}>סיכום יום</h3>
 
         {/* Semester boundary */}
         {(selectedKey === semStartKey || selectedKey === semEndKey) && (
-          <div className="mb-3 rounded-xl border-2 border-yellow bg-yellow/15 px-3 py-2">
-            <div className="text-sm font-bold text-orange">
+          <div className={TH.semBoundaryBox}>
+            <div className={TH.semBoundaryTitle}>
               {selectedKey === semStartKey ? 'תחילת סמסטר' : 'סוף סמסטר'}
             </div>
             {semester?.label && (
-              <div className="text-xs text-ink/70 mt-0.5">{semester.label}</div>
+              <div className={TH.semBoundaryLabel}>{semester.label}</div>
             )}
           </div>
         )}
 
         {/* Selected day holidays */}
         {selectedHolidays.length > 0 && (
-          <div className="mb-3 rounded-xl border-2 border-red/50 bg-red/5 px-3 py-2">
+          <div className={TH.holidayBox}>
             {selectedHolidays.map((h, i) => (
-              <div key={i} className="text-sm font-bold text-red"><bdi>{h}</bdi></div>
+              <div key={i} className={TH.holidayText}><bdi>{h}</bdi></div>
             ))}
           </div>
         )}
@@ -389,16 +448,16 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
           if (daySlots.length === 0) return null;
           return (
             <div className="mb-3">
-              <div className="text-[10px] font-bold text-ink/50 uppercase mb-1">שיעורים</div>
-              <ul className="flex flex-col gap-1.5">
+              <div className={TH.sectionLabel}>שיעורים</div>
+              <ul className="flex flex-col gap-2">
                 {daySlots.map(s => {
                   const sub = subjectOf(s.subject_id);
                   const hex = sub?.color ? (COLOR_HEX[sub.color] ?? undefined) : undefined;
                   return (
-                    <li key={s.id} className="rounded-xl border-2 border-ink bg-paper px-3 py-2 overflow-hidden">
+                    <li key={s.id} className={TH.detailItem}>
                       {hex && <div className="h-1.5 -mx-3 -mt-2 mb-2" style={{ background: hex }} />}
-                      <div className="font-bold text-sm"><bdi>{sub?.name ?? '?'}</bdi></div>
-                      <div className="text-xs text-ink/60">
+                      <div className={TH.detailTitle}><bdi>{sub?.name ?? '?'}</bdi></div>
+                      <div className={TH.detailMeta}>
                         {fmtTime(s.start_minutes)}–{fmtTime(s.end_minutes)}
                         {s.room ? ` · ${s.room}` : ''}
                       </div>
@@ -413,18 +472,18 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
         {/* Deadlines for the day */}
         {dayDeadlines.length > 0 && (
           <div>
-            <div className="text-[10px] font-bold text-ink/50 uppercase mb-1">מועדים</div>
+            <div className={TH.sectionLabel}>מועדים</div>
             <ul className="flex flex-col gap-2">
               {dayDeadlines.map(d => {
                 const sub = subjectOf(d.subject_id);
                 const hex = sub?.color ? (COLOR_HEX[sub.color] ?? undefined) : undefined;
                 return (
-                  <li key={d.id} className="rounded-xl border-2 border-ink bg-paper px-3 py-2 overflow-hidden">
+                  <li key={d.id} className={TH.detailItem}>
                     {hex && (
                       <div className="h-1.5 -mx-3 -mt-2 mb-2" style={{ background: hex }} />
                     )}
-                    <div className="font-bold"><bdi>{d.title}</bdi></div>
-                    <div className="text-xs text-ink/60"><bdi>{sub?.name ?? '—'}</bdi></div>
+                    <div className={TH.detailTitle}><bdi>{d.title}</bdi></div>
+                    <div className={TH.detailMeta}><bdi>{sub?.name ?? '—'}</bdi></div>
                   </li>
                 );
               })}
@@ -436,7 +495,7 @@ export function MonthlyCalendar({ semesterId }: { semesterId: string }) {
          (slotsByDate.get(selectedKey) ?? []).length === 0 &&
          selectedKey !== semStartKey && selectedKey !== semEndKey &&
          selectedHolidays.length === 0 && (
-          <p className="text-sm text-ink/50">אין מועדים</p>
+          <p className={TH.emptyText}>אין מועדים</p>
         )}
       </div>
     </div>

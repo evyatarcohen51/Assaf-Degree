@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/auth';
 import { useSettings } from '../../hooks/useSettings';
 import { useAllSemesters, useYears } from '../../hooks/useTreeData';
 import { r } from '../../lib/routes';
+import { USE_SOFT_DESIGN } from '../../lib/design';
 import { YearsManager } from './YearsManager';
 import { SubjectsSection } from './SubjectsSection';
 import { WeeklyScheduleSection } from './WeeklyScheduleSection';
@@ -98,6 +99,118 @@ export function SettingsPage() {
 
   const isFirstRun = !settings?.bootstrapped;
   const yearLabelOf = (yearId: string) => years.find((y) => y.id === yearId)?.label ?? '';
+
+  if (USE_SOFT_DESIGN) {
+    return (
+      <div className="flex flex-col gap-7">
+        <header className="card-soft-hero flex flex-col items-center text-center">
+          <h1 className="text-3xl md:text-4xl font-display font-black text-soft-text">הגדרות</h1>
+          {isFirstRun && (
+            <div className="mt-4 rounded-soft-md bg-soft-card text-soft-text px-4 py-3 font-medium shadow-soft-pill">
+              בוא נגדיר את האפליקציה — מלא את הפרטים כדי להתחיל. צריך לפחות שנה אחת + סמסטר אחד + שם מוסד.
+            </div>
+          )}
+        </header>
+
+        <section className="card-soft">
+          <h2 className="text-xl font-bold text-soft-text mb-4">מוסד הלימודים</h2>
+          <label className="block">
+            <span className="block text-sm text-soft-muted mb-2">שם המוסד</span>
+            <input
+              className="field-soft"
+              value={institutionName}
+              onChange={(e) => setInstitutionName(e.target.value)}
+              placeholder='לדוגמה: מכינה הקדם-אקדמית של אונ׳ ת"א'
+            />
+          </label>
+        </section>
+
+        <YearsManager />
+
+        {semesters.length > 0 && (
+          <section className="card-soft">
+            <h2 className="text-xl font-bold text-soft-text mb-4">סמסטר לעריכה</h2>
+            <p className="text-sm text-soft-muted mb-3">
+              בחר את הסמסטר שאתה רוצה לערוך כעת. קורסים ושיעורים נשמרים מיידית.
+            </p>
+            <select
+              className="field-soft"
+              value={activeSemesterId}
+              onChange={(e) => setActiveSemesterId(e.target.value)}
+            >
+              {semesters.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {yearLabelOf(s.year_id)} · {s.label}
+                </option>
+              ))}
+            </select>
+          </section>
+        )}
+
+        {activeSemester && (
+          <>
+            <SubjectsSection semesterId={activeSemester.id} />
+            <WeeklyScheduleSection semesterId={activeSemester.id} />
+          </>
+        )}
+
+        <GmailSection />
+
+        <div className="flex flex-wrap gap-3 justify-between items-center">
+          <button type="button" className="btn-soft-primary" onClick={handleSave} disabled={busy}>
+            {busy ? '...' : 'שמור והמשך'}
+          </button>
+          {!isFirstRun && (
+            <button
+              type="button"
+              className="btn-soft-danger"
+              onClick={openResetModal}
+            >
+              אפס הכל
+            </button>
+          )}
+        </div>
+
+        {showResetModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-soft-text/40 p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) closeResetModal(); }}
+          >
+            <div className="card-soft max-w-sm w-full flex flex-col gap-4">
+              <h3 className="text-xl font-bold text-soft-text">אפס את כל הנתונים</h3>
+              <p className="text-sm text-soft-muted">
+                פעולה זו תמחק את כל השנים, הסמסטרים, הקורסים, השיעורים וכל שאר הנתונים.
+                <strong className="block mt-1 text-soft-text">לא ניתן לשחזר.</strong>
+              </p>
+              <label className="flex items-start gap-2 cursor-pointer select-none">
+                <input
+                  ref={checkboxRef}
+                  type="checkbox"
+                  className="mt-0.5 w-4 h-4 cursor-pointer"
+                  checked={resetConfirmed}
+                  onChange={(e) => setResetConfirmed(e.target.checked)}
+                />
+                <span className="text-sm text-soft-text">אני בטוח/ה שאני מוחק/ת את כל הנתונים לתמיד</span>
+              </label>
+              <div className="flex gap-3 justify-end">
+                <button type="button" className="btn-soft" onClick={closeResetModal}>
+                  ביטול
+                </button>
+                <button
+                  type="button"
+                  className="btn-soft-danger"
+                  disabled={!resetConfirmed}
+                  onClick={() => { closeResetModal(); handleResetData(); }}
+                >
+                  אשר מחיקה
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

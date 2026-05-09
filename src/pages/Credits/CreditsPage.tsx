@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAllSubjects, useAllSemesters, useYears } from '../../hooks/useTreeData';
 import { useAllGrades, computeFinalGrade } from '../../hooks/useGrades';
 import { r } from '../../lib/routes';
+import { USE_SOFT_DESIGN } from '../../lib/design';
 import type { Grade, Subject } from '../../types/domain';
 
 interface CourseRow {
@@ -77,6 +78,110 @@ export function CreditsPage() {
       : null;
 
   const totalCredits = filtered.reduce((sum, r) => sum + r.subject.credit_points, 0);
+
+  if (USE_SOFT_DESIGN) {
+    return (
+      <div className="flex flex-col gap-7">
+        <header className="card-soft-hero flex flex-col items-center text-center">
+          <h1 className="text-3xl md:text-4xl font-display font-black text-soft-text">נקודות זכות</h1>
+          <p className="text-sm text-soft-text/75 mt-1">סיכום ציוני הקורסים, נקודות זכות ו-GPA</p>
+        </header>
+
+        <section className="card-soft">
+          <div className="flex flex-col md:flex-row gap-2 mb-4">
+            <select
+              className="field-soft md:max-w-xs"
+              value={yearFilter}
+              onChange={(e) => {
+                setYearFilter(e.target.value);
+                setSemFilter('');
+              }}
+            >
+              <option value="">— כל השנים —</option>
+              {years.map((y) => (
+                <option key={y.id} value={y.id}>
+                  {y.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="field-soft md:max-w-xs"
+              value={semFilter}
+              onChange={(e) => setSemFilter(e.target.value)}
+            >
+              <option value="">— כל הסמסטרים —</option>
+              {semesters
+                .filter((s) => !yearFilter || s.year_id === yearFilter)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {yearById.get(s.year_id)?.label ?? '—'} · {s.label}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          {filtered.length === 0 ? (
+            <p className="text-sm text-soft-muted">אין קורסים להצגה</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="border-b border-soft-border py-3 ps-3 text-start text-soft-muted text-sm font-medium">קורס</th>
+                    <th className="border-b border-soft-border py-3 text-start text-soft-muted text-sm font-medium">שנה</th>
+                    <th className="border-b border-soft-border py-3 text-start text-soft-muted text-sm font-medium">סמסטר</th>
+                    <th className="border-b border-soft-border py-3 text-start text-soft-muted text-sm font-medium">ציון סופי</th>
+                    <th className="border-b border-soft-border py-3 text-start text-soft-muted text-sm font-medium">נק' זכות</th>
+                    <th className="border-b border-soft-border py-3 pe-3 text-start text-soft-muted text-sm font-medium">תרומה</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((row) => (
+                    <tr key={row.subject.id} className="align-middle">
+                      <td className="border-b border-soft-border py-3 ps-3 font-medium text-soft-text">
+                        <Link
+                          to={r.subject(row.yearId, row.semesterId, row.subject.id)}
+                          className="underline hover:text-soft-mustard transition"
+                        >
+                          <bdi>{row.subject.name}</bdi>
+                        </Link>
+                      </td>
+                      <td className="border-b border-soft-border py-3 text-sm text-soft-text">{row.yearLabel}</td>
+                      <td className="border-b border-soft-border py-3 text-sm text-soft-text">{row.semesterLabel}</td>
+                      <td className="border-b border-soft-border py-3 text-sm text-soft-text">
+                        {row.finalGrade !== null ? row.finalGrade.toFixed(2) : '—'}
+                      </td>
+                      <td className="border-b border-soft-border py-3 text-sm text-soft-text">
+                        {row.subject.credit_points}
+                      </td>
+                      <td className="border-b border-soft-border py-3 pe-3 text-sm text-soft-muted">
+                        {row.finalGrade !== null && row.subject.credit_points > 0
+                          ? row.contribution.toFixed(2)
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-soft-md bg-soft-mustard p-4 shadow-soft">
+              <div className="text-sm font-medium tracking-wide text-soft-text/80">GPA (משוקלל)</div>
+              <div className="text-3xl font-black text-soft-text mt-1">
+                {gpa !== null ? gpa.toFixed(2) : '—'}
+              </div>
+            </div>
+            <div className="rounded-soft-md bg-soft-green-pale p-4 shadow-soft">
+              <div className="text-sm font-medium tracking-wide text-soft-text/80">סך נקודות זכות</div>
+              <div className="text-3xl font-black text-soft-text mt-1">{totalCredits}</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

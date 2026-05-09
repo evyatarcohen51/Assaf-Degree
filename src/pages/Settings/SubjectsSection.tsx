@@ -4,7 +4,36 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { newId } from '../../lib/ids';
 import { SUBJECT_COLORS, SUBJECT_COLOR_BG, type SubjectColor } from '../../lib/subjectColors';
+import { USE_SOFT_DESIGN } from '../../lib/design';
 import type { Subject } from '../../types/domain';
+
+const T = USE_SOFT_DESIGN
+  ? {
+      card: 'card-soft',
+      title: 'text-xl font-bold text-soft-text mb-4',
+      field: 'field-soft',
+      btnPrimary: 'btn-soft-primary',
+      btnSec: 'btn-soft text-sm !px-3 !py-1',
+      itemRow: 'flex flex-wrap items-center justify-between gap-3 rounded-soft-md bg-soft-cream px-4 py-3 shadow-soft-pill',
+      empty: 'text-sm text-soft-muted',
+      label: 'font-medium text-soft-text flex-1 min-w-[8rem]',
+      cpLabel: 'flex items-center gap-2 text-sm text-soft-muted',
+      cpInput: 'w-16 rounded-soft-pill bg-soft-input text-soft-text px-3 py-1 shadow-soft-inset outline-none',
+      colorRing: 'ring-2 ring-soft-text ring-offset-2 ring-offset-soft-cream scale-110',
+    }
+  : {
+      card: 'card',
+      title: 'text-xl mb-3',
+      field: 'field',
+      btnPrimary: 'btn',
+      btnSec: 'btn-secondary !px-3 !py-1 text-sm',
+      itemRow: 'flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-ink bg-paper px-3 py-2',
+      empty: 'text-sm text-ink/50',
+      label: 'font-bold flex-1 min-w-[8rem]',
+      cpLabel: 'flex items-center gap-2 text-sm',
+      cpInput: 'w-16 rounded-md border-2 border-ink bg-cream px-2 py-1',
+      colorRing: 'shadow-sticker',
+    };
 
 export function SubjectsSection({ semesterId }: { semesterId: string }) {
   const { user } = useAuth();
@@ -86,11 +115,11 @@ export function SubjectsSection({ semesterId }: { semesterId: string }) {
   }
 
   return (
-    <section className="card">
-      <h2 className="text-xl mb-3">קורסים</h2>
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_8rem_auto] gap-2 mb-3">
+    <section className={T.card}>
+      <h2 className={T.title}>קורסים</h2>
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_8rem_auto] gap-2 mb-4">
         <input
-          className="field"
+          className={T.field}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
@@ -100,7 +129,7 @@ export function SubjectsSection({ semesterId }: { semesterId: string }) {
           dir="auto"
         />
         <input
-          className="field"
+          className={T.field}
           type="number"
           step="0.5"
           min="0"
@@ -111,17 +140,14 @@ export function SubjectsSection({ semesterId }: { semesterId: string }) {
           }}
           placeholder="נק׳ זכות"
         />
-        <button type="button" className="btn" onClick={handleAdd}>
+        <button type="button" className={T.btnPrimary} onClick={handleAdd}>
           הוסף
         </button>
       </div>
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-2.5">
         {display.map((s) => (
-          <li
-            key={s.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-ink bg-paper px-3 py-2"
-          >
-            <span className="font-bold flex-1 min-w-[8rem]">
+          <li key={s.id} className={T.itemRow}>
+            <span className={T.label}>
               <bdi>{s.name}</bdi>
             </span>
             <div
@@ -137,26 +163,26 @@ export function SubjectsSection({ semesterId }: { semesterId: string }) {
                   aria-checked={s.color === c}
                   aria-label={c}
                   onClick={() => handleUpdateColor(s.id, c)}
-                  className={`h-8 w-8 rounded-full border-2 border-ink ${SUBJECT_COLOR_BG[c]} ${
-                    s.color === c ? 'shadow-sticker' : ''
+                  className={`h-8 w-8 rounded-full transition ${SUBJECT_COLOR_BG[c]} ${
+                    s.color === c ? T.colorRing : USE_SOFT_DESIGN ? 'shadow-soft-pill' : 'border-2 border-ink'
                   }`}
                 />
               ))}
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <span className="text-ink/70">נק׳ זכות</span>
+            <label className={T.cpLabel}>
+              <span>נק׳ זכות</span>
               <input
                 type="number"
                 step="0.5"
                 min="0"
                 defaultValue={s.credit_points}
                 onBlur={(e) => handleUpdateCredits(s.id, e.target.value)}
-                className="w-16 rounded-md border-2 border-ink bg-cream px-2 py-1"
+                className={T.cpInput}
               />
             </label>
             <button
               type="button"
-              className="btn-secondary !px-3 !py-1 text-sm"
+              className={T.btnSec}
               onClick={() => handleRemove(s.id)}
             >
               מחק
@@ -164,7 +190,7 @@ export function SubjectsSection({ semesterId }: { semesterId: string }) {
           </li>
         ))}
         {display.length === 0 && (
-          <li className="text-sm text-ink/50">אין קורסים עדיין</li>
+          <li className={T.empty}>אין קורסים עדיין</li>
         )}
       </ul>
     </section>

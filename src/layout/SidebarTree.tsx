@@ -3,6 +3,8 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useYears, useSemestersByYear, useSubjectsBySemester } from '../hooks/useTreeData';
 import { r } from '../lib/routes';
 import { getCurrentSemester } from '../lib/progress';
+import { USE_SOFT_DESIGN } from '../lib/design';
+import { ChevronDownIcon } from '../ui/icons';
 import type { Year, Semester } from '../types/domain';
 
 // Toggle: true = new tree design (year stripe + colored descendants by year),
@@ -61,6 +63,25 @@ function yearChevronClass(): string {
 export function SidebarTree() {
   const years = useYears();
 
+  if (USE_SOFT_DESIGN) {
+    return (
+      <div className="my-2 rounded-soft bg-soft-card shadow-soft p-3">
+        <div className="mb-2 px-2 text-xs font-medium text-soft-muted">
+          שנת לימודים
+        </div>
+        {years.length === 0 ? (
+          <p className="px-2 text-sm text-soft-muted">אין שנים — הוסף בהגדרות</p>
+        ) : (
+          <ul className="flex flex-col gap-1">
+            {years.map((y, i) => (
+              <YearNode key={y.id} year={y} colorName={colorForYearIndex(i)} />
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="my-2 rounded-2xl border-2 border-ink bg-cream p-2">
       <div className="mb-1 px-2 font-display text-sm font-bold uppercase tracking-wide text-ink/70">
@@ -88,6 +109,41 @@ function YearNode({ year, colorName }: { year: Year; colorName: YearColor }) {
     setOpen(true);
     const target = getCurrentSemester(semesters) ?? semesters[0];
     if (target) navigate(r.schedule(year.id, target.id));
+  }
+
+  if (USE_SOFT_DESIGN) {
+    return (
+      <li>
+        <div className="flex items-stretch gap-1">
+          <button
+            type="button"
+            onClick={handleNavigate}
+            className="flex-1 relative overflow-hidden rounded-lg bg-soft-card ps-4 pe-3 py-1.5 text-start text-sm font-medium text-soft-text shadow-soft-pill transition hover:bg-soft-input/40 hover:shadow-soft-pill-hover"
+          >
+            <span aria-hidden="true" className={`absolute inset-y-0 start-0 w-1.5 ${STRIPE_LIGHT[colorName]}`} />
+            {year.label || 'ללא שם'}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen((v) => !v);
+            }}
+            className="rounded-lg bg-soft-card px-2 text-soft-muted shadow-soft-pill transition hover:bg-soft-input/40 hover:shadow-soft-pill-hover"
+            aria-label={open ? 'סגור' : 'פתח'}
+          >
+            <ChevronDownIcon size={16} className={open ? '' : '-rotate-90'} />
+          </button>
+        </div>
+        {open && (
+          <ul className="ms-2 mt-1 flex flex-col gap-1 border-s border-soft-border ps-2">
+            {semesters.map((s) => (
+              <SemesterNode key={s.id} year={year} semester={s} colorName={colorName} />
+            ))}
+          </ul>
+        )}
+      </li>
+    );
   }
 
   return (
@@ -142,6 +198,76 @@ function SemesterNode({
   function handleNavigate() {
     setOpen(true);
     navigate(r.schedule(year.id, semester.id));
+  }
+
+  if (USE_SOFT_DESIGN) {
+    return (
+      <li>
+        <div className="flex items-stretch gap-1">
+          <button
+            type="button"
+            onClick={handleNavigate}
+            className="flex-1 relative overflow-hidden rounded-lg bg-soft-card ps-4 pe-3 py-1.5 text-start text-sm font-medium text-soft-text shadow-soft-pill transition hover:bg-soft-input/40 hover:shadow-soft-pill-hover"
+          >
+            <span aria-hidden="true" className={`absolute inset-y-0 start-0 w-1.5 ${STRIPE_DARK[colorName]}`} />
+            {semester.label || 'סמסטר'}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen((v) => !v);
+            }}
+            className="rounded-lg bg-soft-card px-2 text-soft-muted shadow-soft-pill transition hover:bg-soft-input/40 hover:shadow-soft-pill-hover"
+            aria-label={open ? 'סגור' : 'פתח'}
+          >
+            <ChevronDownIcon size={16} className={open ? '' : '-rotate-90'} />
+          </button>
+        </div>
+        {open && (
+          <ul className="ms-2 mt-1 flex flex-col gap-1 border-s border-soft-border ps-2">
+            <li>
+              <NavLink
+                to={r.schedule(year.id, semester.id)}
+                className={({ isActive }) =>
+                  `block relative overflow-hidden rounded-md ps-4 pe-3 py-1.5 text-start text-xs font-medium transition ${
+                    isActive
+                      ? 'bg-soft-mustard text-soft-text shadow-soft-pill'
+                      : 'bg-soft-input/40 text-soft-text hover:bg-soft-input'
+                  }`
+                }
+              >
+                <span aria-hidden="true" className={`absolute inset-y-0 start-0 w-1.5 ${STRIPE_DARK[colorName]}`} />
+                מערכת שעות
+              </NavLink>
+            </li>
+            {subjects.map((sub) => {
+              const subStripe = sub.color ? (STRIPE_SUBJECT[sub.color] ?? STRIPE_DARK[colorName]) : STRIPE_DARK[colorName];
+              return (
+                <li key={sub.id}>
+                  <NavLink
+                    to={r.subject(year.id, semester.id, sub.id)}
+                    className={({ isActive }) =>
+                      `block relative overflow-hidden rounded-md ps-4 pe-3 py-1.5 text-start text-xs font-medium shadow-soft-pill transition hover:shadow-soft-pill-hover ${
+                        isActive
+                          ? 'bg-soft-mustard text-soft-text'
+                          : 'bg-soft-card text-soft-text hover:bg-soft-input/40'
+                      }`
+                    }
+                  >
+                    <span aria-hidden="true" className={`absolute inset-y-0 start-0 w-1.5 ${subStripe}`} />
+                    <bdi>{sub.name}</bdi>
+                  </NavLink>
+                </li>
+              );
+            })}
+            {subjects.length === 0 && (
+              <li className="px-2 py-1 text-xs text-soft-muted">אין קורסים</li>
+            )}
+          </ul>
+        )}
+      </li>
+    );
   }
 
   return (

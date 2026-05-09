@@ -3,6 +3,7 @@ import { useProfile } from '../../hooks/useSettings';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { getSignedUrl } from '../../hooks/useFiles';
+import { USE_SOFT_DESIGN } from '../../lib/design';
 
 const PROFILE_BUCKET = 'user-files';
 
@@ -80,6 +81,70 @@ export function ProfilePage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (USE_SOFT_DESIGN) {
+    return (
+      <div className="flex flex-col gap-7">
+        <header className="card-soft-hero flex flex-col items-center text-center">
+          <h1 className="text-3xl md:text-4xl font-display font-black text-soft-text">פרופיל</h1>
+        </header>
+
+        <section className="card-soft">
+          <div className="flex flex-col md:flex-row gap-6 items-start">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-32 w-32 rounded-full bg-soft-cream shadow-soft overflow-hidden flex items-center justify-center">
+                {pictureUrl ? (
+                  <img src={pictureUrl} alt="תמונת פרופיל" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-soft-muted text-sm">אין תמונה</span>
+                )}
+              </div>
+              <label className="btn-soft text-sm cursor-pointer">
+                {busy ? '...' : 'העלה תמונה'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handlePicture(e.target.files?.[0])}
+                />
+              </label>
+            </div>
+
+            <div className="flex-1 flex flex-col gap-4">
+              <label className="block">
+                <span className="block text-sm text-soft-muted mb-2">שם</span>
+                <input className="field-soft" value={name} onChange={(e) => setName(e.target.value)} dir="auto" />
+              </label>
+              <label className="block">
+                <span className="block text-sm text-soft-muted mb-2">מייל</span>
+                <input
+                  className="field-soft"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  dir="auto"
+                />
+              </label>
+              <label className="block">
+                <span className="block text-sm text-soft-muted mb-2">תאריך לידה</span>
+                <input
+                  className="field-soft"
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                />
+              </label>
+              <div>
+                <button type="button" className="btn-soft-primary" onClick={handleSave} disabled={busy}>
+                  {busy ? '...' : 'שמור'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
   }
 
   return (

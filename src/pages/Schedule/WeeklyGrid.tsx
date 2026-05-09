@@ -3,7 +3,53 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useTable } from '../../lib/useRealtime';
 import { SUBJECT_COLOR_BG, isSubjectColor } from '../../lib/subjectColors';
+import { USE_SOFT_DESIGN } from '../../lib/design';
 import type { ScheduleSlot, Subject, Weekday } from '../../types/domain';
+
+// Theme-aware classes to swap sticker borders/backgrounds with soft equivalents.
+const TH = USE_SOFT_DESIGN
+  ? {
+      tipText: 'text-xs text-soft-muted mb-3',
+      gridFrame: 'rounded-soft overflow-hidden min-w-[42rem] shadow-soft bg-soft-card',
+      headerCell: 'p-2 font-display text-xs uppercase border-b border-soft-border bg-soft-cream',
+      headerDay: 'p-2 text-center font-medium text-soft-text border-b border-s border-soft-border bg-soft-cream',
+      labelBg: 'bg-soft-cream flex items-center justify-center leading-none',
+      labelHour: 'border-t border-soft-border',
+      labelHalf: 'border-t border-soft-border/60',
+      labelQuarter: 'border-t border-soft-border/30',
+      labelHourText: 'text-[10px] font-medium text-soft-text',
+      labelMinuteText: 'text-[8px] text-soft-muted',
+      cellBorderBase: 'border-s border-soft-border/40',
+      cellHour: 'border-t border-soft-border/60',
+      cellHalf: 'border-t border-soft-border/40',
+      cellQuarter: 'border-t border-soft-border/15',
+      cellDragOver: 'ring-2 ring-soft-mustard ring-inset bg-soft-mustard/10',
+      slotBlock: 'relative m-0.5 z-10 rounded-soft-md bg-soft-cream overflow-hidden shadow-soft-pill',
+      slotBody: 'px-2 py-2 text-xs font-medium text-soft-text cursor-grab active:cursor-grabbing h-full',
+      slotRoom: 'text-[10px] text-soft-muted',
+      slotResize: 'absolute bottom-0 inset-x-0 h-2 cursor-ns-resize bg-soft-text/20 hover:bg-soft-text/40 z-20',
+    }
+  : {
+      tipText: 'text-xs text-ink/60 mb-2',
+      gridFrame: 'border-2 border-ink rounded-xl overflow-hidden min-w-[42rem]',
+      headerCell: 'bg-paper p-2 font-display text-xs uppercase border-b-2 border-ink',
+      headerDay: 'p-2 text-center font-display font-bold uppercase border-b-2 border-s-2 border-ink bg-paper',
+      labelBg: 'bg-paper flex items-center justify-center leading-none',
+      labelHour: 'border-t-2 border-ink/30',
+      labelHalf: 'border-t border-ink/20',
+      labelQuarter: 'border-t border-ink/10',
+      labelHourText: 'text-[10px] font-bold',
+      labelMinuteText: 'text-[8px] text-ink/40',
+      cellBorderBase: 'border-s-2 border-ink/20',
+      cellHour: 'border-t-2 border-ink/20',
+      cellHalf: 'border-t border-ink/15',
+      cellQuarter: 'border-t border-ink/[0.06]',
+      cellDragOver: 'ring-2 ring-ink ring-inset bg-ink/5',
+      slotBlock: 'relative m-0.5 z-10 rounded-md border-2 border-ink bg-cream overflow-hidden',
+      slotBody: 'px-2 py-2 text-xs font-bold cursor-grab active:cursor-grabbing h-full',
+      slotRoom: 'text-[10px] text-ink/70',
+      slotResize: 'absolute bottom-0 inset-x-0 h-2 cursor-ns-resize bg-ink/30 hover:bg-ink/60 z-20',
+    };
 
 const WEEKDAYS = [
   { value: 0 as Weekday, label: 'ראשון' },
@@ -194,11 +240,11 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
 
   return (
     <div className="overflow-x-auto">
-      <p className="text-xs text-ink/60 mb-2">
+      <p className={TH.tipText}>
         טיפ: גרור בלוק שיעור לתא אחר כדי להזיז. גרור את הקצה העליון או התחתון כדי למתוח (בקפיצות של 15 דקות).
       </p>
       <div
-        className="grid border-2 border-ink rounded-xl overflow-hidden min-w-[42rem]"
+        className={`grid ${TH.gridFrame}`}
         style={{
           gridTemplateColumns: `4rem repeat(${WEEKDAYS.length}, minmax(0, 1fr))`,
           gridTemplateRows: `auto repeat(${SLOTS.length}, ${CELL_PX}px)`,
@@ -207,13 +253,13 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
         {/* Header row */}
         <div
           style={{ gridColumn: 1, gridRow: 1 }}
-          className="bg-paper p-2 font-display text-xs uppercase border-b-2 border-ink"
+          className={TH.headerCell}
         />
         {WEEKDAYS.map((d, i) => (
           <div
             key={`hdr-${d.value}`}
             style={{ gridColumn: i + 2, gridRow: 1 }}
-            className="p-2 text-center font-display font-bold uppercase border-b-2 border-s-2 border-ink bg-paper"
+            className={TH.headerDay}
           >
             {d.label}
           </div>
@@ -229,18 +275,14 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
             <div
               key={`label-${slotMin}`}
               style={{ gridColumn: 1, gridRow: i + 2 }}
-              className={`bg-paper flex items-center justify-center leading-none ${
-                isHour
-                  ? 'border-t-2 border-ink/30'
-                  : isHalf
-                    ? 'border-t border-ink/20'
-                    : 'border-t border-ink/10'
+              className={`${TH.labelBg} ${
+                isHour ? TH.labelHour : isHalf ? TH.labelHalf : TH.labelQuarter
               }`}
             >
               {isHour ? (
-                <span className="text-[10px] font-bold">{`${h}:00`}</span>
+                <span className={TH.labelHourText}>{`${h}:00`}</span>
               ) : (
-                <span className="text-[8px] text-ink/40">{`:${String(m).padStart(2, '0')}`}</span>
+                <span className={TH.labelMinuteText}>{`:${String(m).padStart(2, '0')}`}</span>
               )}
             </div>
           );
@@ -260,13 +302,9 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
                 onDragOver={(e) => handleDragOver(e, d.value, slotMin)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, d.value, slotMin)}
-                className={`border-s-2 border-ink/20 ${
-                  isHour
-                    ? 'border-t-2 border-ink/20'
-                    : isHalf
-                      ? 'border-t border-ink/15'
-                      : 'border-t border-ink/[0.06]'
-                } ${isDragOver ? 'ring-2 ring-ink ring-inset bg-ink/5' : ''}`}
+                className={`${TH.cellBorderBase} ${
+                  isHour ? TH.cellHour : isHalf ? TH.cellHalf : TH.cellQuarter
+                } ${isDragOver ? TH.cellDragOver : ''}`}
               />
             );
           }),
@@ -283,7 +321,7 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
                 gridColumn: dayIdx + 2,
                 gridRow: `${startRow + 2} / span ${span}`,
               }}
-              className="relative m-0.5 z-10 rounded-md border-2 border-ink bg-cream overflow-hidden"
+              className={TH.slotBlock}
             >
               {/* Top resize handle — also doubles as the subject color stripe */}
               <div
@@ -295,16 +333,16 @@ export function WeeklyGrid({ semesterId }: { semesterId: string }) {
               <div
                 draggable
                 onDragStart={(e) => handleDragStart(e, slot.id)}
-                className="px-2 py-2 text-xs font-bold cursor-grab active:cursor-grabbing h-full"
+                className={TH.slotBody}
                 title="גרור כדי להזיז"
               >
                 <bdi>{subjectName(slot.subject_id)}</bdi>
-                {slot.room && <div className="text-[10px] text-ink/70">{slot.room}</div>}
+                {slot.room && <div className={TH.slotRoom}>{slot.room}</div>}
               </div>
               {/* Bottom resize handle */}
               <div
                 onMouseDown={(e) => startResize('bottom', slot, e)}
-                className="absolute bottom-0 inset-x-0 h-2 cursor-ns-resize bg-ink/30 hover:bg-ink/60 z-20"
+                className={TH.slotResize}
                 aria-label="מתח למטה"
               />
             </div>

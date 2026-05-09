@@ -2,6 +2,31 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useSettings } from '../../hooks/useSettings';
+import { USE_SOFT_DESIGN } from '../../lib/design';
+
+const T = USE_SOFT_DESIGN
+  ? {
+      card: 'card-soft',
+      title: 'text-xl font-bold text-soft-text mb-1',
+      desc: 'text-sm text-soft-muted mb-4',
+      labelText: 'block text-sm text-soft-muted mb-2',
+      field: 'field-soft',
+      btnPrimary: 'btn-soft-primary',
+      btnSec: 'btn-soft',
+      okText: 'inline-flex items-center gap-1 text-green font-medium',
+      errText: 'inline-flex items-center gap-1 text-red font-medium',
+    }
+  : {
+      card: 'card',
+      title: 'text-xl mb-1',
+      desc: 'text-sm text-ink/60 mb-3',
+      labelText: 'block text-sm mb-1',
+      field: 'field',
+      btnPrimary: 'btn',
+      btnSec: 'btn-secondary',
+      okText: 'inline-flex items-center gap-1 text-green font-bold',
+      errText: 'inline-flex items-center gap-1 text-red font-bold',
+    };
 
 type Status =
   | { kind: 'idle' }
@@ -75,9 +100,9 @@ export function GmailSection() {
   }
 
   return (
-    <section className="card">
-      <h2 className="text-xl mb-1">הגדרת Gmail</h2>
-      <p className="text-sm text-ink/60 mb-3">
+    <section className={T.card}>
+      <h2 className={T.title}>הגדרת Gmail</h2>
+      <p className={T.desc}>
         תזכורות שלך יישלחו דרך חשבון ה-Gmail שלך.
         {' '}
         <a
@@ -93,10 +118,10 @@ export function GmailSection() {
 
       <div className="flex flex-col gap-3">
         <label className="block">
-          <span className="block text-sm mb-1">כתובת Gmail</span>
+          <span className={T.labelText}>כתובת Gmail</span>
           <input
             type="email"
-            className="field"
+            className={T.field}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="your-name@gmail.com"
@@ -105,10 +130,10 @@ export function GmailSection() {
           />
         </label>
         <label className="block">
-          <span className="block text-sm mb-1">סיסמת אפליקציה (Gmail App Password)</span>
+          <span className={T.labelText}>סיסמת אפליקציה (Gmail App Password)</span>
           <input
             type="password"
-            className="field"
+            className={T.field}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder={isConfigured ? '•••• •••• •••• •••• (הזן מחדש כדי לעדכן)' : 'xxxx xxxx xxxx xxxx'}
@@ -120,7 +145,7 @@ export function GmailSection() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            className="btn"
+            className={T.btnPrimary}
             onClick={handleSaveAndTest}
             disabled={status.kind === 'busy'}
           >
@@ -130,7 +155,7 @@ export function GmailSection() {
           {isConfigured && (
             <button
               type="button"
-              className="btn-secondary"
+              className={T.btnSec}
               onClick={handleClear}
               disabled={status.kind === 'busy'}
             >
@@ -139,17 +164,17 @@ export function GmailSection() {
           )}
 
           {status.kind === 'ok' && (
-            <span className="inline-flex items-center gap-1 text-green font-bold">
+            <span className={T.okText}>
               <span aria-hidden>✓</span> {status.message}
             </span>
           )}
           {status.kind === 'err' && (
-            <span className="inline-flex items-center gap-1 text-red font-bold">
+            <span className={T.errText}>
               <span aria-hidden>✗</span> {status.message}
             </span>
           )}
           {status.kind === 'idle' && isConfigured && (
-            <span className="inline-flex items-center gap-1 text-green font-bold">
+            <span className={T.okText}>
               <span aria-hidden>✓</span> Gmail מוגדר
             </span>
           )}

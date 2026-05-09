@@ -6,6 +6,11 @@ import '@fontsource/heebo/700.css';
 import '@fontsource/heebo/900.css';
 import './index.css';
 import { App } from './App';
+import { USE_SOFT_DESIGN } from './lib/design';
+
+if (USE_SOFT_DESIGN) {
+  document.documentElement.classList.add('soft-design');
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
