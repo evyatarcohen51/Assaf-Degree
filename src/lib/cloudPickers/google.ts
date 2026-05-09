@@ -37,6 +37,7 @@ interface GooglePickerBuilder {
   addView: (v: GooglePickerView) => GooglePickerBuilder;
   setOAuthToken: (t: string) => GooglePickerBuilder;
   setDeveloperKey: (k: string) => GooglePickerBuilder;
+  setAppId: (id: string) => GooglePickerBuilder;
   setCallback: (cb: (data: GooglePickerCallback) => void) => GooglePickerBuilder;
   build: () => { setVisible: (v: boolean) => void };
 }
@@ -109,10 +110,12 @@ export async function pickFromGoogleDrive(): Promise<PickedCloudFile | null> {
         .setSelectFolderEnabled(false)
         .setOwnedByMe(true)
         .setParent('root');
+      const appId = clientId.split('-')[0];
       const picker = new window.google!.picker.PickerBuilder()
         .addView(view)
         .setOAuthToken(token)
         .setDeveloperKey(apiKey)
+        .setAppId(appId)
         .setCallback((data) => {
           if (data.action === window.google!.picker.Action.PICKED && data.docs?.[0]) {
             const d = data.docs[0];
