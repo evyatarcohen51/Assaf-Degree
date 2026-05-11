@@ -263,7 +263,7 @@ export function UpcomingDeadlines() {
   async function handleAdd() {
     if (!user) return;
     if (!title.trim() || !date || !subjectId) return;
-    await supabase.from('deadlines').insert({
+    const { error } = await supabase.from('deadlines').insert({
       id: newId(),
       user_id: user.id,
       subject_id: subjectId === OTHER_SUBJECT ? null : subjectId,
@@ -274,8 +274,21 @@ export function UpcomingDeadlines() {
       reminder_recurring_days: pendingReminderAt && pendingRecurring ? Number(pendingRecurring) : null,
       reminder_sent_at: null,
     });
+    if (error) {
+      const isNullSubjectError =
+        subjectId === OTHER_SUBJECT &&
+        (error.code === '23502' || /null value.*subject_id/i.test(error.message));
+      alert(
+        isNullSubjectError
+          ? 'הוספת מועד ללא קורס דורשת מיגרציה 0007 ב-Supabase. הרץ את supabase/migrations/0007_nullable_deadline_subject.sql ב-SQL editor.'
+          : `שגיאה בהוספת המועד: ${error.message}`,
+      );
+      return;
+    }
     setTitle('');
     setDate('');
+    setSubjectId('');
+    setKind('exam');
     setPendingReminderAt('');
     setPendingRecurring('');
   }
